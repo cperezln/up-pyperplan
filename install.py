@@ -21,7 +21,6 @@ if __name__ == '__main__':
     dir_path = os.path.dirname(os.path.realpath(__file__))
     bindings_dir = os.path.expanduser(solver_install_site(plat_specific=True))
 
-    pip3 install pyperplan
     print('pyperplan installed successfully!')
 
     if os.path.exists(os.path.join(bindings_dir, 'upf_pyperplan')):

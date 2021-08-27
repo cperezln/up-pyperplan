@@ -63,6 +63,7 @@ class SolverImpl(upf.Solver):
     @staticmethod
     def supports(problem_kind):
         supported_kind = ProblemKind()
+        supported_kind.set_typing('FLAT_TYPING')
         return problem_kind.features().issubset(supported_kind.features())
 
     @staticmethod

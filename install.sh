@@ -19,4 +19,6 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 cd ${DIR}/
 
+pip3 install pyperplan
+
 python3 ${DIR}/install.py

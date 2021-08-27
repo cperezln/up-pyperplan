@@ -12,8 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+import os
 import upf
 from upf.problem_kind import ProblemKind
+from upf.io.pddl_writer import PDDLWriter
+from upf.io.pddl_reader import PDDLReader
 
 
 class SolverImpl(upf.Solver):
@@ -21,6 +25,12 @@ class SolverImpl(upf.Solver):
         pass
 
     def solve(self, problem):
+        pddl_writer = PDDLWriter(problem)
+        pddl_writer.write_domain("pyperplan_domain.pddl")
+        pddl_writer.write_problem("pyperplan_problem.pddl")
+        run_command = "python3 pyperplan.py pyperplan_domain.pddl pyperplan_problem.pddl"
+        os.system(run_command)
+
 
 
     @staticmethod

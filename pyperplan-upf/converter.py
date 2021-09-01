@@ -14,7 +14,7 @@
 #
 
 
-import upf.walkers as walker
+import upf.walkers as walkers
 import upf.operators as op
 from typing import List
 from upf.walkers.dag import DagWalker
@@ -23,16 +23,19 @@ from pddl.parser import Predicate, Variable, Formula, TypeFormula, TypeVariable,
 
 #(self, expression: FNode, args: List[Formula]) -> Formula:
 #Formula("or", args, TypeFormula)
-class ActionExpressionConverter(DagWalker):
-    def __init__(self, env, fluents={}, instances={}, parameters={}):
+class ExpressionConverter(DagWalker):
+    def __init__(self):
         DagWalker.__init__(self)
-        self._env = env
-        self._fluents = fluents
-        self._instances = instances
-        self._parameters = parameters
 
-    def convert(self, expression):
+
+    def convert_effect(self, expression: FNode):
         """Converts the given expression."""
+        self.is_precondition = False
+        return self.walk(expression)
+
+    def convert_precondition(self, expression: FNode):
+        """Converts the given expression."""
+        self.is_precondition = True
         return self.walk(expression)
 
     def walk_and(self, expression: FNode, args: List[Formula]) -> Formula:
@@ -49,6 +52,8 @@ class ActionExpressionConverter(DagWalker):
 
     def walk_not(self, expression: FNode, args: List[Formula]) -> Formula:
         assert len(args) == 1
+        if self.is_precondition:
+            assert False #NOTE raise some Exception
         return Formula("not", args, TypeFormula)
 
     def walk_fluent_exp(self, expression: FNode, args: List[Formula]) -> Formula:
@@ -63,6 +68,6 @@ class ActionExpressionConverter(DagWalker):
         assert len(args) == 0
         return Formula(expression.object().name(), [], TypeConstant)
 
-    @walkers.handles(set({op.ALL_TYPES} - {op.AND, op.OR, op.NOT, op.FLUENT_EXP, op.PARAM_EXP, op.OBJECT_EXP}))
+    @walkers.handles(set(op.ALL_TYPES) - {op.AND, op.OR, op.NOT, op.FLUENT_EXP, op.PARAM_EXP, op.OBJECT_EXP})
     def walk_error(self, expression: FNode, args: List[Formula]) -> Formula:
         assert False #NOTE raise some Exception

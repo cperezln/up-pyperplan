@@ -31,7 +31,7 @@ from upf.object import Object as UpfObject
 from pddl.parser import DomainDef, ProblemDef, InitStmt, GoalStmt, ActionStmt, Variable, Formula, Keyword, RequirementsStmt, Predicate, PredicatesStmt, PredicateInstance
 from pddl.parser import Type as PyperplanType
 from pddl.parser import Object as PyperplanObject
-from pddl.tree_visitor import TraversePDDLProblem
+from pddl.tree_visitor import TraversePDDLProblem, TraversePDDLDomain
 
 from pyperplan import _ground, _search, _write_solution
 
@@ -52,7 +52,13 @@ class SolverImpl(upf.Solver):
         self._converter = ExpressionConverter()
 
     def solve(self, problem: Problem):
-        dom = self.parse_domain(problem)
+        domAST = self.parse_domain(problem)
+        # initialize the translation visitor
+        visitor = TraversePDDLDomain()
+        # and traverse the AST
+        domAST.accept(visitor)
+        # finally return the pddl.Domain
+        dom = visitor.domain
         probAST = self.parse_problem(dom, problem)
         search = SEARCHES["bfs"]
 
@@ -125,7 +131,7 @@ class SolverImpl(upf.Solver):
             predicates.append(Predicate(n, vars))
         actions: List[ActionStmt] = [self._parse_action(a, problem.env, self._converter) for a in problem.actions().values()]
 
-        return DomainDef(f'domain_{problem.name()}', pyperplan_types, RequirementsStmt(keywords), PredicatesStmt(predicates),  actions)
+        return DomainDef(f'domain_{problem.name()}', RequirementsStmt(keywords), pyperplan_types, PredicatesStmt(predicates),  actions)
 
     def _parse_action(self, action: Action, env, converter) -> ActionStmt:
         var_list = [self._parse_action_parameter(p) for p in action.parameters()]

@@ -28,21 +28,22 @@ class ExpressionConverter(DagWalker):
         DagWalker.__init__(self)
 
 
-    def convert_effect(self, expression: FNode):
+    def convert_effect(self, expression: FNode) -> Formula:
         """Converts the given expression."""
         self.is_precondition = False
         return self.walk(expression)
 
-    def convert_precondition(self, expression: FNode):
+    def convert_precondition(self, expression: FNode) -> Formula:
         """Converts the given expression."""
         self.is_precondition = True
         return self.walk(expression)
 
     def walk_and(self, expression: FNode, args: List[Formula]) -> Formula:
-        if len(args) == 0:
-            return Formula("true", [], TypeConstant)
-        else:
-            return Formula("and", args, TypeFormula)
+        # if len(args) == 0:
+        #     return Formula("true", [], TypeConstant)
+        # else:
+        #     return Formula("and", args, TypeFormula)
+        return Formula("and", args, TypeFormula)
 
     def walk_or(self, expression: FNode, args: List[Formula]) -> Formula:
         if len(args) == 0:
@@ -57,7 +58,7 @@ class ExpressionConverter(DagWalker):
         return Formula("not", args, TypeFormula)
 
     def walk_fluent_exp(self, expression: FNode, args: List[Formula]) -> Formula:
-        return Predicate(expression.fluent().name(), args)
+        return Formula(expression.fluent().name(), args, TypeFormula)
 
     def walk_param_exp(self, expression: FNode, args: List[Formula]) -> Formula:
         assert len(args) == 0

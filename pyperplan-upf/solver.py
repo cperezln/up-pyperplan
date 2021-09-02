@@ -68,7 +68,6 @@ class SolverImpl(upf.Solver):
         solution = _search(task, search, heuristic)
         _write_solution(solution, "pyperplan_problem.pddl.soln")
 
-
         if not os.path.isfile("pyperplan_problem.pddl.soln"):
             print("Ops")
         else:
@@ -77,9 +76,10 @@ class SolverImpl(upf.Solver):
         return plan
 
     def parse_problem(self, domain: DomainDef, problem: Problem) -> ProblemDef:
-        objects = [self._parse_object(o) for o in problem.objects().values()]
+        objects = [self._parse_object(o) for o in problem.all_objects()]
         init = self._parse_initial_values(problem)
-        goal = GoalStmt(self._converter.convert(problem.env.expression_manager.And(problem.goals())))
+        goal_formula = self._converter.convert_effect(problem.env.expression_manager.And(problem.goals()))
+        goal = GoalStmt(goal_formula)
         return ProblemDef(problem.name(), domain.name, objects, init, goal)
 
 
@@ -109,13 +109,12 @@ class SolverImpl(upf.Solver):
             raise
         if problem.kind().has_equality(): # type: ignore
             raise
-        if (self.problem.kind().has_continuous_numbers() or # type: ignore
-            self.problem.kind().has_discrete_numbers()): # type: ignore
+        if (problem.kind().has_continuous_numbers() or # type: ignore
+            problem.kind().has_discrete_numbers()): # type: ignore
             raise
-        if self.problem.kind().has_conditional_effects(): # type: ignore
+        if problem.kind().has_conditional_effects(): # type: ignore
             raise
-        #NEED TYPES, a list of types
-        pyperplan_types = [self._parse_type(t) for t in problem.user_types.values()]
+        pyperplan_types = [self._parse_type(t) for t in problem.user_types().values()]
         predicates = []
         count = 0
         for n, f in problem.fluents().items():
@@ -131,7 +130,7 @@ class SolverImpl(upf.Solver):
     def _parse_action(self, action: Action, env, converter) -> ActionStmt:
         var_list = [self._parse_action_parameter(p) for p in action.parameters()]
         precondition = converter.convert_precondition(env.expression_manager.And(action.preconditions()))
-        effect = converter.conver_effect(self._parse_effects(action, env))
+        effect = converter.convert_effect(self._parse_effects(action, env))
         return ActionStmt(action.name(), var_list, precondition, effect)
 
     def _parse_effects(self, action: Action, env) -> FNode:

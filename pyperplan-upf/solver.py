@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import search
 import os
 import subprocess
 import re
@@ -25,29 +26,78 @@ from upf.exceptions import UPFException
 from upf.action import Action, ActionParameter
 from upf.fnode import FNode
 from upf.types import Type as UpfType
+from upf.object import Object as UpfObject
 
-from pddl.parser import DomainDef, ActionStmt, Variable, Formula, Keyword, RequirementsStmt, Predicate, PredicatesStmt
+from pddl.parser import DomainDef, ProblemDef, InitStmt, GoalStmt, ActionStmt, Variable, Formula, Keyword, RequirementsStmt, Predicate, PredicatesStmt, PredicateInstance
 from pddl.parser import Type as PyperplanType
+from pddl.parser import Object as PyperplanObject
+from pddl.tree_visitor import TraversePDDLProblem
+
+from pyperplan import _ground, _search, _write_solution
 
 from upf_pyperplan.converter import ExpressionConverter
 
+SEARCHES = {
+    "astar": search.astar_search,
+    "wastar": search.weighted_astar_search,
+    "gbf": search.greedy_best_first_search,
+    "bfs": search.breadth_first_search,
+    "ehs": search.enforced_hillclimbing_search,
+    "ids": search.iterative_deepening_search,
+    "sat": search.sat_solve,
+}
+
 class SolverImpl(upf.Solver):
     def __init__(self, weight=None, heuristic=None, **options):
-        pass
+        self._converter = ExpressionConverter()
 
     def solve(self, problem: Problem):
-        pddl_writer = PDDLWriter(problem)
-        pddl_writer.write_domain("pyperplan_domain.pddl")
-        pddl_writer.write_problem("pyperplan_problem.pddl")
-        cmd = "python3 pyperplan.py pyperplan_domain.pddl pyperplan_problem.pddl"
-        res = subprocess.run(cmd, capture_output=True)
+        dom = self.parse_domain(problem)
+        probAST = self.parse_problem(dom, problem)
+        search = SEARCHES["bfs"]
+
+        # initialize the translation visitor
+        visitor = TraversePDDLProblem(dom)
+        # and traverse the AST
+        probAST.accept(visitor)
+        # finally return the pddl.Problem
+        task = _ground(visitor.get_problem())
+        heuristic = None
+        if not heuristic_class is None:
+            heuristic = heuristic_class(task)
+        solution = _search(task, search, heuristic)
+        _write_solution(solution, "pyperplan_problem.pddl.soln")
+
 
         if not os.path.isfile("pyperplan_problem.pddl.soln"):
-            print(res.stderr.decode())
+            print("Ops")
         else:
             plan = self._plan_from_file(problem, "pyperplan_problem.pddl.soln")
 
         return plan
+
+    def parse_problem(self, domain: DomainDef, problem: Problem) -> ProblemDef:
+        objects = [self._parse_object(o) for o in problem.objects().values()]
+        init = self._parse_initial_values(problem)
+        goal = GoalStmt(self._converter.convert(problem.env.expression_manager.And(problem.goals())))
+        return ProblemDef(problem.name(), domain.name, objects, init, goal)
+
+
+    def _parse_initial_values(self, problem: Problem) -> InitStmt:
+        pi_l: List[PredicateInstance] = []
+        for f, v in problem.initial_values().items():
+            if v != problem.env.expression_manager.TRUE():
+                assert False #RAISE
+            obj_l: List[str] = []
+            for o in f.args():
+                obj_l.append(o.object().name())
+            pi_l.append(PredicateInstance(f.fluent().name(), obj_l))
+        return InitStmt(pi_l)
+
+
+
+    def _parse_object(self, obj: UpfObject) -> PyperplanObject:
+        return PyperplanObject(obj.name, self._parse_type(obj.type()))
 
     def parse_domain(self, problem: Problem) -> DomainDef:
         keywords: List[Keyword] = [Keyword('strips')]
@@ -65,6 +115,7 @@ class SolverImpl(upf.Solver):
         if self.problem.kind().has_conditional_effects(): # type: ignore
             raise
         #NEED TYPES, a list of types
+        pyperplan_types = [self._parse_type(t) for t in problem.user_types.values()]
         predicates = []
         count = 0
         for n, f in problem.fluents().items():
@@ -73,13 +124,9 @@ class SolverImpl(upf.Solver):
                 vars.append(Variable(f'a_{count}', [self._parse_type(t)]))
                 count = count + 1
             predicates.append(Predicate(n, vars))
+        actions: List[ActionStmt] = [self._parse_action(a, problem.env, self._converter) for a in problem.actions().values()]
 
-
-        return DomainDef(f'domain_{problem.name()}', types, RequirementsStmt(keywords), PredicatesStmt(predicates),  )
-
-
-
-
+        return DomainDef(f'domain_{problem.name()}', pyperplan_types, RequirementsStmt(keywords), PredicatesStmt(predicates),  actions)
 
     def _parse_action(self, action: Action, env, converter) -> ActionStmt:
         var_list = [self._parse_action_parameter(p) for p in action.parameters()]
@@ -122,7 +169,7 @@ class SolverImpl(upf.Solver):
                     action = problem.action(res.group(1))
                     parameters = []
                     for p in res.group(2).split():
-                        parameters.append(problem._env._expression_manager.ObjectExp(problem.object(p)))
+                        parameters.append(problem.env._expression_manager.ObjectExp(problem.object(p)))
                     actions.append(upf.ActionInstance(action, tuple(parameters)))
                 else:
                     raise UPFException('Error parsing plan generated by ' + self.__class__.__name__)

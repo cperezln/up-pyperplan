@@ -27,6 +27,7 @@ from upf.action import Action, ActionParameter
 from upf.fnode import FNode
 from upf.types import Type as UpfType
 from upf.object import Object as UpfObject
+from upf.plan import ActionInstance, SequentialPlan
 
 from pddl.parser import DomainDef, ProblemDef, InitStmt, GoalStmt, ActionStmt, Variable
 from pddl.parser import Formula, Keyword, RequirementsStmt, Predicate, PredicatesStmt, PredicateInstance
@@ -43,6 +44,20 @@ from upf_pyperplan.converter import ExpressionConverter
 class SolverImpl(upf.Solver):
     def __init__(self, weight=None, heuristic=None, **options):
         self._converter = ExpressionConverter()
+
+    # def solve(self, problem):
+    #     pddl_writer = PDDLWriter(problem)
+    #     pddl_writer.write_domain("pyperplan_domain.pddl")
+    #     pddl_writer.write_problem("pyperplan_problem.pddl")
+    #     cmd = "python3 pyperplan.py pyperplan_domain.pddl pyperplan_problem.pddl"
+    #     res = subprocess.run(cmd, capture_output=True)
+
+    #     if not os.path.isfile("pyperplan_problem.pddl.soln"):
+    #         print(res.stderr.decode())
+    #     else:
+    #         plan = self._plan_from_file(problem, "pyperplan_problem.pddl.soln")
+
+    #     return plan
 
     def solve(self, problem: Problem):
         domAST = self.parse_domain(problem)
@@ -65,14 +80,18 @@ class SolverImpl(upf.Solver):
         # if not heuristic_class is None:
         #     heuristic = heuristic_class(task)
         solution = _search(task, search, heuristic)
-        _write_solution(solution, "pyperplan_problem.pddl.soln")
+        actions: List[ActionInstance] = []
+        for action_string in solution:
+            actions.append(self._parse_string_to_action_instance(action_string.name, problem))
 
-        if not os.path.isfile("pyperplan_problem.pddl.soln"):
-            print("Ops")
-        else:
-            plan = self._plan_from_file(problem, "pyperplan_problem.pddl.soln")
+        return SequentialPlan(actions)
 
-        return plan
+    def _parse_string_to_action_instance(self, string: str, problem: Problem) -> ActionInstance:
+        assert string[0] == "(" and string[-1] == ")"
+        list_str = string[1:-1].split(" ")
+        action = problem.action(list_str[0])
+        param = tuple(problem.object(o_name) for o_name in list_str[1:])
+        return ActionInstance(action, param)
 
     def parse_problem(self, domain: DomainDef, problem: Problem) -> ProblemDef:
         objects = [self._parse_object(o) for o in problem.all_objects()]
@@ -97,7 +116,7 @@ class SolverImpl(upf.Solver):
 
 
     def _parse_object(self, obj: UpfObject) -> PyperplanObject:
-        return PyperplanObject(obj.name, self._parse_type(obj.type()))
+        return PyperplanObject(obj.name(), obj.type().name())
 
     def parse_domain(self, problem: Problem) -> DomainDef:
         keywords: List[Keyword] = [Keyword('strips')]
@@ -120,7 +139,7 @@ class SolverImpl(upf.Solver):
         for n, f in problem.fluents().items():
             vars = []
             for t in f.signature():
-                vars.append(Variable(f'a_{count}', [self._parse_type(t)]))
+                vars.append(Variable(f'a_{count}', [t.name()]))
                 count = count + 1
             predicates.append(Predicate(n, vars))
         actions: List[ActionStmt] = [self._parse_action(a, problem.env, self._converter) for a in problem.actions().values()]
@@ -142,12 +161,12 @@ class SolverImpl(upf.Solver):
             if e.value().bool_constant_value():
                 effects.append(e.fluent())
             else:
-                effects.append(env.expression_manager.Not(e.fluent))
+                effects.append(env.expression_manager.Not(e.fluent()))
         return env.expression_manager.And(effects)
 
     def _parse_action_parameter(self, parameter: ActionParameter) -> Variable:
         t = self._parse_type(parameter.type())
-        return Variable(parameter.name(), [t])
+        return Variable(parameter.name(), [parameter.type().name()])
 
     def _parse_type(self, type: UpfType) -> PyperplanType:
         assert type.is_user_type()

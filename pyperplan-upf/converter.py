@@ -70,7 +70,7 @@ class ExpressionConverter(DagWalker):
 
     def walk_param_exp(self, expression: FNode, args: List[Formula]) -> Formula:
         assert len(args) == 0
-        var = Variable(expression.parameter.name())
+        var = Variable(expression.parameter().name())
         return Formula(var, [], TypeVariable)
 
     def walk_object_exp(self, expression: FNode, args: List[Formula]) -> Formula:

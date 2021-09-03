@@ -86,7 +86,8 @@ class SolverImpl(upf.Solver):
         pi_l: List[PredicateInstance] = []
         for f, v in problem.initial_values().items():
             if v != problem.env.expression_manager.TRUE():
-                assert False #RAISE
+                assert not v.bool_constant_value()
+                continue
             obj_l: List[str] = []
             for o in f.args():
                 obj_l.append(o.object().name())

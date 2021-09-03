@@ -31,12 +31,20 @@ class ExpressionConverter(DagWalker):
     def convert_effect(self, expression: FNode) -> Formula:
         """Converts the given expression."""
         self.is_precondition = False
-        return self.walk(expression)
+        f = self.walk(expression)
+        if f.key != "and":
+            return Formula("and", [f], TypeFormula)
+        else:
+            return f
 
     def convert_precondition(self, expression: FNode) -> Formula:
         """Converts the given expression."""
         self.is_precondition = True
-        return self.walk(expression)
+        f = self.walk(expression)
+        if f.key != "and":
+            return Formula("and", [f], TypeFormula)
+        else:
+            return f
 
     def walk_and(self, expression: FNode, args: List[Formula]) -> Formula:
         # if len(args) == 0:

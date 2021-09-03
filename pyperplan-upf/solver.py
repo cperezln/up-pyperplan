@@ -28,24 +28,17 @@ from upf.fnode import FNode
 from upf.types import Type as UpfType
 from upf.object import Object as UpfObject
 
-from pddl.parser import DomainDef, ProblemDef, InitStmt, GoalStmt, ActionStmt, Variable, Formula, Keyword, RequirementsStmt, Predicate, PredicatesStmt, PredicateInstance
+from pddl.parser import DomainDef, ProblemDef, InitStmt, GoalStmt, ActionStmt, Variable
+from pddl.parser import Formula, Keyword, RequirementsStmt, Predicate, PredicatesStmt, PredicateInstance
+from pddl.parser import PreconditionStmt, EffectStmt
 from pddl.parser import Type as PyperplanType
 from pddl.parser import Object as PyperplanObject
 from pddl.tree_visitor import TraversePDDLProblem, TraversePDDLDomain
 
-from pyperplan import _ground, _search, _write_solution
+from pyperplan import _ground, _search, _write_solution, SEARCHES, HEURISTICS
 
 from upf_pyperplan.converter import ExpressionConverter
 
-SEARCHES = {
-    "astar": search.astar_search,
-    "wastar": search.weighted_astar_search,
-    "gbf": search.greedy_best_first_search,
-    "bfs": search.breadth_first_search,
-    "ehs": search.enforced_hillclimbing_search,
-    "ids": search.iterative_deepening_search,
-    "sat": search.sat_solve,
-}
 
 class SolverImpl(upf.Solver):
     def __init__(self, weight=None, heuristic=None, **options):
@@ -69,8 +62,8 @@ class SolverImpl(upf.Solver):
         # finally return the pddl.Problem
         task = _ground(visitor.get_problem())
         heuristic = None
-        if not heuristic_class is None:
-            heuristic = heuristic_class(task)
+        # if not heuristic_class is None:
+        #     heuristic = heuristic_class(task)
         solution = _search(task, search, heuristic)
         _write_solution(solution, "pyperplan_problem.pddl.soln")
 
@@ -130,14 +123,13 @@ class SolverImpl(upf.Solver):
                 count = count + 1
             predicates.append(Predicate(n, vars))
         actions: List[ActionStmt] = [self._parse_action(a, problem.env, self._converter) for a in problem.actions().values()]
-
-        return DomainDef(f'domain_{problem.name()}', RequirementsStmt(keywords), pyperplan_types, PredicatesStmt(predicates),  actions)
+        return DomainDef(f'domain_{problem.name()}', RequirementsStmt(keywords), pyperplan_types, PredicatesStmt(predicates),  actions, None)
 
     def _parse_action(self, action: Action, env, converter) -> ActionStmt:
         var_list = [self._parse_action_parameter(p) for p in action.parameters()]
         precondition = converter.convert_precondition(env.expression_manager.And(action.preconditions()))
         effect = converter.convert_effect(self._parse_effects(action, env))
-        return ActionStmt(action.name(), var_list, precondition, effect)
+        return ActionStmt(action.name(), var_list, PreconditionStmt(precondition), EffectStmt(effect))
 
     def _parse_effects(self, action: Action, env) -> FNode:
         effects = []

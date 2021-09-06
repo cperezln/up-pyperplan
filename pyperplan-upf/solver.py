@@ -17,7 +17,7 @@ import pyperplan.search as search
 import os
 import subprocess
 import re
-from typing import List
+from typing import List, Dict, Tuple
 import upf
 from upf.problem_kind import ProblemKind
 from upf.problem import Problem
@@ -29,10 +29,14 @@ from upf.types import Type as UpfType
 from upf.object import Object as UpfObject
 from upf.plan import ActionInstance, SequentialPlan
 
+from pyperplan.pddl.pddl import Action as PyperplanAction
+from pyperplan.pddl.pddl import Type as PyperplanType
+from pyperplan.pddl.pddl import Predicate
+
 from pyperplan.pddl.parser import DomainDef, ProblemDef, InitStmt, GoalStmt, ActionStmt, Variable
-from pyperplan.pddl.parser import Formula, Keyword, RequirementsStmt, Predicate, PredicatesStmt, PredicateInstance
+from pyperplan.pddl.parser import Formula, Keyword, RequirementsStmt, PredicatesStmt, PredicateInstance
 from pyperplan.pddl.parser import PreconditionStmt, EffectStmt
-from pyperplan.pddl.parser import Type as PyperplanType
+
 from pyperplan.pddl.parser import Object as PyperplanObject
 from pyperplan.pddl.tree_visitor import TraversePDDLProblem, TraversePDDLDomain
 
@@ -133,23 +137,35 @@ class SolverImpl(upf.Solver):
             raise
         if problem.kind().has_conditional_effects(): # type: ignore
             raise
-        pyperplan_types = [self._parse_type(t) for t in problem.user_types().values()]
-        predicates = []
-        count = 0
+        if problem.has_type("object"):
+            self._object_pyp_type = self._parse_type(problem.user_type("object"), None)
+        else:
+            self._object_pyp_type = PyperplanType("object", None)
+        pyperplan_types = [self._object_pyp_type] + [self._parse_type(t, self._object_pyp_type) for t in problem.user_types().values() if t.name() != "object"]
+        predicates: Dict[str, Predicate] = {}
         for n, f in problem.fluents().items():
-            vars = []
+            count = 0
+            #predicate_signature
+            pred_sign: List[Tuple[str, List[PyperplanType]]] = []
             for t in f.signature():
-                vars.append(Variable(f'a_{count}', [t.name()]))
+                pred_sign.append(tuple(f'a_{count}', [self._parse_type(t.name(), self._object_pyp_type)]))
                 count = count + 1
-            predicates.append(Predicate(n, vars))
-        actions: List[ActionStmt] = [self._parse_action(a, problem.env, self._converter) for a in problem.actions().values()]
+            predicates.append(Predicate(n, pred_sign))
+        actions: Dict[str, PyperplanAction] = {a.name(): self._parse_action(a, problem.env) for a in problem.actions().values()}
         return DomainDef(f'domain_{problem.name()}', RequirementsStmt(keywords), pyperplan_types, PredicatesStmt(predicates),  actions, None)
 
-    def _parse_action(self, action: Action, env, converter) -> ActionStmt:
-        var_list = [self._parse_action_parameter(p) for p in action.parameters()]
-        precondition = converter.convert_precondition(env.expression_manager.And(action.preconditions()))
-        effect = converter.convert_effect(self._parse_effects(action, env))
-        return ActionStmt(action.name(), var_list, PreconditionStmt(precondition), EffectStmt(effect))
+    def _parse_action(self, action: Action, env) -> PyperplanAction:
+        #action_signature
+        act_sign: List[Tuple[str, Tuple[PyperplanType, ...]]] = [tuple(p.name(),
+            tuple(self._parse_type(p.type(), self._object_pyp_type))) for p in action.parameters()]
+        precond: List[Predicate] = []
+        for p in action.preconditions():
+            if p.is_fluent():
+                precond.append(Predicate(p.fluent().name(), ))
+            elif p.is_parameter_exp():
+                #NOTE Fondamentalmente trattano i parametri delle azioni come fossero dei fluenti!!!
+
+        return PyperplanAction(action.name(), act_sign, , EffectStmt(effect))
 
     def _parse_effects(self, action: Action, env) -> FNode:
         effects = []
@@ -168,9 +184,9 @@ class SolverImpl(upf.Solver):
         t = self._parse_type(parameter.type())
         return Variable(parameter.name(), [parameter.type().name()])
 
-    def _parse_type(self, type: UpfType) -> PyperplanType:
+    def _parse_type(self, type: UpfType, parent: PyperplanType) -> PyperplanType:
         assert type.is_user_type()
-        return PyperplanType(type.name())
+        return PyperplanType(type.name(), parent)
 
     def _parse_expression(self, expression: FNode) -> Formula:
         pass

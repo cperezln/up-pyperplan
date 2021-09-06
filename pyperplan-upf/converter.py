@@ -19,7 +19,7 @@ import upf.operators as op
 from typing import List
 from upf.walkers.dag import DagWalker
 from upf.fnode import FNode
-from pddl.parser import Predicate, Variable, Formula, TypeFormula, TypeVariable, TypeConstant
+from pyperplan.pddl.parser import Predicate, Variable, Formula, TypeFormula, TypeVariable, TypeConstant
 
 #(self, expression: FNode, args: List[Formula]) -> Formula:
 #Formula("or", args, TypeFormula)

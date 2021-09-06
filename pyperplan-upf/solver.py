@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-import search
+import pyperplan.search as search
 import os
 import subprocess
 import re
@@ -29,14 +29,14 @@ from upf.types import Type as UpfType
 from upf.object import Object as UpfObject
 from upf.plan import ActionInstance, SequentialPlan
 
-from pddl.parser import DomainDef, ProblemDef, InitStmt, GoalStmt, ActionStmt, Variable
-from pddl.parser import Formula, Keyword, RequirementsStmt, Predicate, PredicatesStmt, PredicateInstance
-from pddl.parser import PreconditionStmt, EffectStmt
-from pddl.parser import Type as PyperplanType
-from pddl.parser import Object as PyperplanObject
-from pddl.tree_visitor import TraversePDDLProblem, TraversePDDLDomain
+from pyperplan.pddl.parser import DomainDef, ProblemDef, InitStmt, GoalStmt, ActionStmt, Variable
+from pyperplan.pddl.parser import Formula, Keyword, RequirementsStmt, Predicate, PredicatesStmt, PredicateInstance
+from pyperplan.pddl.parser import PreconditionStmt, EffectStmt
+from pyperplan.pddl.parser import Type as PyperplanType
+from pyperplan.pddl.parser import Object as PyperplanObject
+from pyperplan.pddl.tree_visitor import TraversePDDLProblem, TraversePDDLDomain
 
-from pyperplan import _ground, _search, _write_solution, SEARCHES, HEURISTICS
+from pyperplan.planner import _ground, _search, SEARCHES, HEURISTICS
 
 from upf_pyperplan.converter import ExpressionConverter
 

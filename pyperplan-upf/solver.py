@@ -68,6 +68,8 @@ class SolverImpl(upf.Solver):
         dom = self.parse_domain(problem)
         prob = self.parse_problem(dom, problem)
         search = SEARCHES["bfs"]
+        print("PROBLEM PARSED:")
+        print(prob)
         task = _ground(prob)
         heuristic = None
         # if not heuristic_class is None:
@@ -90,7 +92,7 @@ class SolverImpl(upf.Solver):
         objects: Dict[str, PyperplanType] = {o.name(): self._parse_type(o.type(), self._object_pyp_type) for o in problem.all_objects()}
         init: List[Predicate] = self._parse_initial_values(problem)
         goal: List[Predicate] = self._parse_goal(problem)
-        return ProblemDef(problem.name(), domain, objects, init, goal)
+        return PyperplanProblem(problem.name(), domain, objects, init, goal)
 
     def _parse_goal(self, problem: Problem) -> List[Predicate]:
         p_l: List[Predicate] = []

@@ -65,6 +65,7 @@ class SolverImpl(upf.Solver):
     #     return plan
 
     def solve(self, problem: Problem):
+        self.pyp_types: Dict[str, PyperplanType] = {}
         dom = self.parse_domain(problem)
         prob = self.parse_problem(dom, problem)
         search = SEARCHES["bfs"]
@@ -180,7 +181,12 @@ class SolverImpl(upf.Solver):
 
     def _parse_type(self, type: UpfType, parent: PyperplanType) -> PyperplanType:
         assert type.is_user_type()
-        return PyperplanType(type.name(), parent)
+        t = self.pyp_types.get(type.name(), None)
+        if t is not None:
+            return t
+        new_t = PyperplanType(type.name(), parent)
+        self.pyp_types[type.name] = new_t
+        return new_t
 
     def _parse_expression(self, expression: FNode) -> Formula:
         pass

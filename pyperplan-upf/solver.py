@@ -156,9 +156,9 @@ class SolverImpl(upf.Solver):
 
         for p in action.preconditions():
             if p.is_fluent_exp():
-                signature: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(f'a_{_}',
-                                        (self._parse_type(type, self._object_pyp_type), ))
-                                        for _, type in enumerate(p.fluent().signature())]
+                signature: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(param_exp.parameter().name(),
+                                        (self._parse_type(param_exp.parameter().type(), self._object_pyp_type), ))
+                                        for param_exp in p.args()]
                 precond.append(Predicate(p.fluent().name(), signature))
             else:
                 #preconditions must be a list of fluents.

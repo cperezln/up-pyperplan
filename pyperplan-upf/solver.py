@@ -68,8 +68,8 @@ class SolverImpl(upf.Solver):
         dom = self.parse_domain(problem)
         prob = self.parse_problem(dom, problem)
         search = SEARCHES["bfs"]
-        print("PROBLEM PARSED:")
-        print(prob)
+        print("Domain PARSED: SBAGLIATO")
+        print(dom)
         task = _ground(prob)
         heuristic = None
         # if not heuristic_class is None:

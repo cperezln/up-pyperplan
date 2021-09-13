@@ -13,20 +13,14 @@
 # limitations under the License.
 
 
-import pyperplan.search as search
-import os
-import subprocess
 import re
 from typing import List, Dict, Set, Tuple
 import upf
 from upf.problem_kind import ProblemKind
 from upf.problem import Problem
-from upf.io.pddl_writer import PDDLWriter
-from upf.exceptions import UPFException
-from upf.action import Action, ActionParameter
-from upf.fnode import FNode
+from upf.exceptions import UPFUnsupportedProblemTypeError
+from upf.action import Action
 from upf.types import Type as UpfType
-from upf.object import Object as UpfObject
 from upf.plan import ActionInstance, SequentialPlan
 
 from pyperplan.pddl.pddl import Action as PyperplanAction
@@ -34,44 +28,24 @@ from pyperplan.pddl.pddl import Type as PyperplanType
 from pyperplan.pddl.pddl import Problem as PyperplanProblem
 from pyperplan.pddl.pddl import Predicate, Effect, Domain
 
-from pyperplan.pddl.parser import DomainDef, ProblemDef, InitStmt, GoalStmt, ActionStmt, Variable
-from pyperplan.pddl.parser import Formula, Keyword, RequirementsStmt, PredicatesStmt, PredicateInstance
-from pyperplan.pddl.parser import PreconditionStmt, EffectStmt
-
-from pyperplan.pddl.parser import Object as PyperplanObject
-from pyperplan.pddl.tree_visitor import TraversePDDLProblem, TraversePDDLDomain
 
 from pyperplan.planner import _ground, _search, SEARCHES, HEURISTICS
-
-from upf_pyperplan.converter import ExpressionConverter
 
 
 class SolverImpl(upf.Solver):
     def __init__(self, weight=None, heuristic=None, **options):
-        self._converter = ExpressionConverter()
-
-    # def solve(self, problem):
-    #     pddl_writer = PDDLWriter(problem)
-    #     pddl_writer.write_domain("pyperplan_domain.pddl")
-    #     pddl_writer.write_problem("pyperplan_problem.pddl")
-    #     cmd = "python3 pyperplan.py pyperplan_domain.pddl pyperplan_problem.pddl"
-    #     res = subprocess.run(cmd, capture_output=True)
-
-    #     if not os.path.isfile("pyperplan_problem.pddl.soln"):
-    #         print(res.stderr.decode())
-    #     else:
-    #         plan = self._plan_from_file(problem, "pyperplan_problem.pddl.soln")
-
-    #     return plan
+        #NOTE here parameters like heuristic and the search can be configured
+        pass
 
     def solve(self, problem: Problem):
+        '''This function returns the SequentialPlan for the problem given in input.
+        The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
+        is supported.'''
         self.pyp_types: Dict[str, PyperplanType] = {}
         dom = self.parse_domain(problem)
         prob = self.parse_problem(dom, problem)
         search = SEARCHES["bfs"]
         task = _ground(prob)
-        print("TASK SBAGLIATO")
-        print(task)
         heuristic = None
         # if not heuristic_class is None:
         #     heuristic = heuristic_class(task)
@@ -105,7 +79,6 @@ class SolverImpl(upf.Solver):
             p_l.append(Predicate(f.fluent().name(), obj_l))
             return p_l
 
-
     def _parse_initial_values(self, problem: Problem) -> List[Predicate]:
         p_l: List[Predicate] = []
         for f, v in problem.initial_values().items():
@@ -118,25 +91,23 @@ class SolverImpl(upf.Solver):
             p_l.append(Predicate(f.fluent().name(), obj_l))
             return p_l
 
-    def _parse_object(self, obj: UpfObject) -> PyperplanObject:
-        return PyperplanObject(obj.name(), obj.type().name())
-
     def parse_domain(self, problem: Problem) -> Domain:
         if problem.kind().has_negative_conditions(): # type: ignore
-            raise
+            raise UPFUnsupportedProblemTypeError(f"Problem: {problem} contains negative preconditions or negative goals. The solver Pyperplan does not support that!")
         if problem.kind().has_disjunctive_conditions(): # type: ignore
-            raise
+            raise UPFUnsupportedProblemTypeError(f"Problem: {problem} contains disjunctive preconditions. The solver Pyperplan does not support that!")
         if problem.kind().has_equality(): # type: ignore
-            raise
+            raise UPFUnsupportedProblemTypeError(f"Problem {problem} contains an equality symbol. The solver Pyperplan does not support that!")
         if (problem.kind().has_continuous_numbers() or # type: ignore
             problem.kind().has_discrete_numbers()): # type: ignore
-            raise
+            raise UPFUnsupportedProblemTypeError(f"Problem {problem} contains numbers. The solver Pyperplan does not support that!")
         if problem.kind().has_conditional_effects(): # type: ignore
-            raise
+            raise UPFUnsupportedProblemTypeError(f"Problem {problem} contains conditional effects. The solver Pyperplan does not support that!")
         if problem.has_type("object"):
             self._object_pyp_type = self._parse_type(problem.user_type("object"), None)
         else:
             self._object_pyp_type = PyperplanType("object", None)
+            self.pyp_types["object"] = self._object_pyp_type
         pyperplan_types = [self._object_pyp_type] + [self._parse_type(t, self._object_pyp_type) for t in problem.user_types().values() if t.name() != "object"]
         predicates: Dict[str, Predicate] = {}
         for n, f in problem.fluents().items():
@@ -160,9 +131,16 @@ class SolverImpl(upf.Solver):
                                         (self._parse_type(param_exp.parameter().type(), self._object_pyp_type), ))
                                         for param_exp in p.args()]
                 precond.append(Predicate(p.fluent().name(), signature))
+            elif p.is_and():
+                for fl in p.args():
+                    if not fl.is_fluent():
+                        raise UPFUnsupportedProblemTypeError(f"In precondition: {p} of action: {action} every son of an AND must be a FLUENT")
+                    signature: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(param_exp.parameter().name(),
+                                        (self._parse_type(param_exp.parameter().type(), self._object_pyp_type), ))
+                                        for param_exp in fl.args()]
+                    precond.append(Predicate(p.fluent().name(), signature))
             else:
-                #preconditions must be a list of fluents.
-                raise
+                raise UPFUnsupportedProblemTypeError(f"In precondition: {p} of action: {action} is not an AND or a FLUENT")
         effect = Effect()
         add_set: Set[Predicate] = set()
         del_set: Set[Predicate] = set()
@@ -187,28 +165,6 @@ class SolverImpl(upf.Solver):
         new_t = PyperplanType(type.name(), parent)
         self.pyp_types[type.name()] = new_t
         return new_t
-
-    def _parse_expression(self, expression: FNode) -> Formula:
-        pass
-
-    def _plan_from_file(self, problem: 'upf.Problem', plan_filename: str) -> 'upf.Plan':
-        actions = []
-        with open(plan_filename) as plan:
-            for line in plan.readlines():
-                if re.match(r'^\s*(;.*)?$', line):
-                    continue
-                res = re.match(r'^\s*\(\s*([\w?-]+)((\s+[\w?-]+)*)\s*\)\s*$', line)
-                if res:
-                    action = problem.action(res.group(1))
-                    parameters = []
-                    for p in res.group(2).split():
-                        parameters.append(problem.env._expression_manager.ObjectExp(problem.object(p)))
-                    actions.append(upf.ActionInstance(action, tuple(parameters)))
-                else:
-                    raise UPFException('Error parsing plan generated by ' + self.__class__.__name__)
-        return upf.SequentialPlan(actions)
-
-
 
     @staticmethod
     def supports(problem_kind):

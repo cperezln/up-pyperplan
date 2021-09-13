@@ -185,7 +185,7 @@ class SolverImpl(upf.Solver):
         if t is not None:
             return t
         new_t = PyperplanType(type.name(), parent)
-        self.pyp_types[type.name] = new_t
+        self.pyp_types[type.name()] = new_t
         return new_t
 
     def _parse_expression(self, expression: FNode) -> Formula:

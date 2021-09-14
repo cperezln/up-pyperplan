@@ -82,14 +82,15 @@ class SolverImpl(upf.Solver):
     def _parse_initial_values(self, problem: Problem) -> List[Predicate]:
         p_l: List[Predicate] = []
         for f, v in problem.initial_values().items():
-            if v != problem.env.expression_manager.TRUE():
-                assert not v.bool_constant_value()
+            if not v.is_bool_constant():
+                raise UPFUnsupportedProblemTypeError(f"Initial value: {v} of fluent: {f} is not True or False.")
+            if not v.bool_constant_value():
                 continue
             obj_l: List[Tuple[str, PyperplanType]] = []
             for o in f.args():
                 obj_l.append((o.object().name(), self._parse_type(o.object().type(), self._object_pyp_type)))
             p_l.append(Predicate(f.fluent().name(), obj_l))
-            return p_l
+        return p_l
 
     def parse_domain(self, problem: Problem) -> Domain:
         if problem.kind().has_negative_conditions(): # type: ignore

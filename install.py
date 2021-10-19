@@ -26,5 +26,5 @@ if __name__ == '__main__':
     if os.path.exists(os.path.join(bindings_dir, 'upf_pyperplan')):
         shutil.rmtree(os.path.join(bindings_dir, 'upf_pyperplan'))
 
-    shutil.copytree(os.path.join(dir_path, 'pyperplan-upf'), os.path.join(bindings_dir, 'upf_pyperplan'))
+    shutil.copytree(os.path.join(dir_path, 'upf_pyperplan'), os.path.join(bindings_dir, 'upf_pyperplan'))
     print('upf_pyperplan installed successfully!')

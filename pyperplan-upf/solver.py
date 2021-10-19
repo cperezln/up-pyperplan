@@ -14,14 +14,11 @@
 
 
 import re
-from typing import List, Dict, Set, Tuple
+from typing import List, Dict, Optional, Set, Tuple
 import upf
 from upf.problem_kind import ProblemKind
-from upf.problem import Problem
 from upf.exceptions import UPFUnsupportedProblemTypeError
-from upf.action import Action
 from upf.types import Type as UpfType
-from upf.plan import ActionInstance, SequentialPlan
 
 from pyperplan.pddl.pddl import Action as PyperplanAction
 from pyperplan.pddl.pddl import Type as PyperplanType
@@ -35,41 +32,43 @@ from pyperplan.planner import _ground, _search, SEARCHES, HEURISTICS
 class SolverImpl(upf.Solver):
     def __init__(self, weight=None, heuristic=None, **options):
         #NOTE here parameters like heuristic and the search can be configured
-        pass
+        self.planner_name = "Pyperplan"
 
-    def solve(self, problem: Problem):
+    def solve(self, problem: 'upf.problem.Problem') -> Optional['upf.plan.SequentialPlan']:
         '''This function returns the SequentialPlan for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
         self.pyp_types: Dict[str, PyperplanType] = {}
-        dom = self.parse_domain(problem)
-        prob = self.parse_problem(dom, problem)
+        dom = self._parse_domain(problem)
+        prob = self._parse_problem(dom, problem)
         search = SEARCHES["bfs"]
         task = _ground(prob)
         heuristic = None
         # if not heuristic_class is None:
         #     heuristic = heuristic_class(task)
         solution = _search(task, search, heuristic)
-        actions: List[ActionInstance] = []
+        actions: List[upf.plan.ActionInstance] = []
+        if solution is None:
+            return None
         for action_string in solution:
             actions.append(self._parse_string_to_action_instance(action_string.name, problem))
 
-        return SequentialPlan(actions)
+        return upf.plan.SequentialPlan(actions)
 
-    def _parse_string_to_action_instance(self, string: str, problem: Problem) -> ActionInstance:
+    def _parse_string_to_action_instance(self, string: str, problem: upf.problem.Problem) -> upf.plan.ActionInstance:
         assert string[0] == "(" and string[-1] == ")"
         list_str = string[1:-1].split(" ")
         action = problem.action(list_str[0])
         param = tuple(problem.object(o_name) for o_name in list_str[1:])
-        return ActionInstance(action, param)
+        return upf.plan.ActionInstance(action, param)
 
-    def parse_problem(self, domain: Domain, problem: Problem) -> PyperplanProblem:
+    def _parse_problem(self, domain: Domain, problem: upf.problem.Problem) -> PyperplanProblem:
         objects: Dict[str, PyperplanType] = {o.name(): self._parse_type(o.type(), self._object_pyp_type) for o in problem.all_objects()}
         init: List[Predicate] = self._parse_initial_values(problem)
         goal: List[Predicate] = self._parse_goal(problem)
         return PyperplanProblem(problem.name(), domain, objects, init, goal)
 
-    def _parse_goal(self, problem: Problem) -> List[Predicate]:
+    def _parse_goal(self, problem: upf.problem.Problem) -> List[Predicate]:
         p_l: List[Predicate] = []
         for f in problem.goals():
             assert f.is_fluent_exp()
@@ -79,7 +78,7 @@ class SolverImpl(upf.Solver):
             p_l.append(Predicate(f.fluent().name(), obj_l))
             return p_l
 
-    def _parse_initial_values(self, problem: Problem) -> List[Predicate]:
+    def _parse_initial_values(self, problem: upf.problem.Problem) -> List[Predicate]:
         p_l: List[Predicate] = []
         for f, v in problem.initial_values().items():
             if not v.is_bool_constant():
@@ -91,7 +90,7 @@ class SolverImpl(upf.Solver):
                 p_l.append(Predicate(f.fluent().name(), obj_l))
         return p_l
 
-    def parse_domain(self, problem: Problem) -> Domain:
+    def _parse_domain(self, problem: upf.problem.Problem) -> Domain:
         if problem.kind().has_negative_conditions(): # type: ignore
             raise UPFUnsupportedProblemTypeError(f"Problem: {problem} contains negative preconditions or negative goals. The solver Pyperplan does not support that!")
         if problem.kind().has_disjunctive_conditions(): # type: ignore
@@ -119,7 +118,7 @@ class SolverImpl(upf.Solver):
         actions: Dict[str, PyperplanAction] = {a.name(): self._parse_action(a, problem.env) for a in problem.actions().values()}
         return Domain(f'domain_{problem.name()}', pyperplan_types, predicates,  actions)
 
-    def _parse_action(self, action: Action, env) -> PyperplanAction:
+    def _parse_action(self, action: upf.action.Action, env) -> PyperplanAction:
         #action_signature
         act_sign: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(p.name(),
             (self._parse_type(p.type(), self._object_pyp_type), )) for p in action.parameters()]

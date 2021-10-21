@@ -118,7 +118,7 @@ class SolverImpl(upf.Solver):
         actions: Dict[str, PyperplanAction] = {a.name(): self._parse_action(a, problem.env) for a in problem.actions().values()}
         return Domain(f'domain_{problem.name()}', pyperplan_types, predicates,  actions)
 
-    def _parse_action(self, action: 'upf.action.Action', env) -> PyperplanAction:
+    def _parse_action(self, action: 'upf.action.InstantaneousAction', env) -> PyperplanAction:
         #action_signature
         act_sign: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(p.name(),
             (self._parse_type(p.type(), self._object_pyp_type), )) for p in action.parameters()]

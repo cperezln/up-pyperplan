@@ -20,19 +20,23 @@ from upf.problem_kind import ProblemKind
 from upf.exceptions import UPFUnsupportedProblemTypeError
 from upf.types import Type as UpfType
 
-from pyperplan.pddl.pddl import Action as PyperplanAction
-from pyperplan.pddl.pddl import Type as PyperplanType
-from pyperplan.pddl.pddl import Problem as PyperplanProblem
-from pyperplan.pddl.pddl import Predicate, Effect, Domain
+from pyperplan.pddl.pddl import Action as PyperplanAction # type: ignore
+from pyperplan.pddl.pddl import Type as PyperplanType # type: ignore
+from pyperplan.pddl.pddl import Problem as PyperplanProblem # type: ignore
+from pyperplan.pddl.pddl import Predicate, Effect, Domain # type: ignore
 
 
-from pyperplan.planner import _ground, _search, SEARCHES, HEURISTICS
+from pyperplan.planner import _ground, _search, SEARCHES, HEURISTICS # type: ignore
 
 
 class SolverImpl(upf.Solver):
-    def __init__(self, weight=None, heuristic=None, **options):
-        #NOTE here parameters like heuristic and the search can be configured
-        self.planner_name = "Pyperplan"
+    def __init__(self, **options):
+        if len(options) > 0:
+            raise
+
+    @staticmethod
+    def name() -> str:
+        return "Pyperplan"
 
     def solve(self, problem: 'upf.Problem') -> Optional['upf.plan.SequentialPlan']:
         '''This function returns the SequentialPlan for the problem given in input.
@@ -59,7 +63,8 @@ class SolverImpl(upf.Solver):
         assert string[0] == "(" and string[-1] == ")"
         list_str = string[1:-1].split(" ")
         action = problem.action(list_str[0])
-        param = tuple(problem.object(o_name) for o_name in list_str[1:])
+        expr_manager = problem.env.expression_manager
+        param = tuple(expr_manager.ObjectExp(problem.object(o_name)) for o_name in list_str[1:])
         return upf.plan.ActionInstance(action, param)
 
     def _convert_problem(self, domain: Domain, problem: 'upf.Problem') -> PyperplanProblem:
@@ -76,7 +81,7 @@ class SolverImpl(upf.Solver):
             for o in f.args():
                 obj_l.append((o.object().name(), (self._convert_type(o.object().type(), self._object_pyp_type), )))
             p_l.append(Predicate(f.fluent().name(), obj_l))
-            return p_l
+        return p_l
 
     def _convert_initial_values(self, problem: 'upf.Problem') -> List[Predicate]:
         p_l: List[Predicate] = []
@@ -107,7 +112,7 @@ class SolverImpl(upf.Solver):
         else:
             self._object_pyp_type = PyperplanType("object", None)
             self.pyp_types["object"] = self._object_pyp_type
-        pyperplan_types = [self._object_pyp_type] + [self._convert_type(t, self._object_pyp_type) for t in problem.user_types().values() if t.name() != "object"]
+        pyperplan_types = [self._object_pyp_type] + [self._convert_type(t, self._object_pyp_type) for t in problem.user_types().values() if t.name() != "object"] # type: ignore
         predicates: Dict[str, Predicate] = {}
         for n, f in problem.fluents().items():
             #predicate_signature
@@ -118,25 +123,26 @@ class SolverImpl(upf.Solver):
         actions: Dict[str, PyperplanAction] = {a.name(): self._convert_action(a, problem.env) for a in problem.actions().values()}
         return Domain(f'domain_{problem.name()}', pyperplan_types, predicates,  actions)
 
-    def _convert_action(self, action: 'upf.action.InstantaneousAction', env) -> PyperplanAction:
+    def _convert_action(self, action: 'upf.Action', env) -> PyperplanAction:
         #action_signature
+        assert isinstance(action, upf.InstantaneousAction)
         act_sign: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(p.name(),
             (self._convert_type(p.type(), self._object_pyp_type), )) for p in action.parameters()]
         precond: List[Predicate] = []
 
         for p in action.preconditions():
             if p.is_fluent_exp():
-                signature: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(param_exp.parameter().name(),
-                                        (self._convert_type(param_exp.parameter().type(), self._object_pyp_type), ))
-                                        for param_exp in p.args()]
+                signature = [(param_exp.parameter().name(),
+                              (self._convert_type(param_exp.parameter().type(), self._object_pyp_type), ))
+                             for param_exp in p.args()]
                 precond.append(Predicate(p.fluent().name(), signature))
             elif p.is_and():
                 for fl in p.args():
-                    if not fl.is_fluent():
+                    if not fl.is_fluent_exp():
                         raise UPFUnsupportedProblemTypeError(f"In precondition: {p} of action: {action} every son of an AND must be a FLUENT")
-                    signature: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(param_exp.parameter().name(),
-                                        (self._convert_type(param_exp.parameter().type(), self._object_pyp_type), ))
-                                        for param_exp in fl.args()]
+                    signature = [(param_exp.parameter().name(),
+                                  (self._convert_type(param_exp.parameter().type(), self._object_pyp_type), ))
+                                 for param_exp in fl.args()]
                     precond.append(Predicate(p.fluent().name(), signature))
             else:
                 raise UPFUnsupportedProblemTypeError(f"In precondition: {p} of action: {action} is not an AND or a FLUENT")
@@ -158,11 +164,11 @@ class SolverImpl(upf.Solver):
 
     def _convert_type(self, type: UpfType, parent: PyperplanType) -> PyperplanType:
         assert type.is_user_type()
-        t = self.pyp_types.get(type.name(), None)
+        t = self.pyp_types.get(type.name(), None) # type: ignore
         if t is not None:
             return t
-        new_t = PyperplanType(type.name(), parent)
-        self.pyp_types[type.name()] = new_t
+        new_t = PyperplanType(type.name(), parent) # type: ignore
+        self.pyp_types[type.name()] = new_t # type: ignore
         return new_t
 
     @staticmethod

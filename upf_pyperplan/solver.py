@@ -76,11 +76,18 @@ class SolverImpl(upf.Solver):
     def _convert_goal(self, problem: 'upf.Problem') -> List[Predicate]:
         p_l: List[Predicate] = []
         for f in problem.goals():
-            assert f.is_fluent_exp()
-            obj_l: List[Tuple[str, Tuple[PyperplanType]]] = []
-            for o in f.args():
-                obj_l.append((o.object().name(), (self._convert_type(o.object().type(), self._object_pyp_type), )))
-            p_l.append(Predicate(f.fluent().name(), obj_l))
+            if f.is_fluent_exp():
+                obj_l: List[Tuple[str, Tuple[PyperplanType]]] = []
+                for o in f.args():
+                    obj_l.append((o.object().name(), (self._convert_type(o.object().type(), self._object_pyp_type), )))
+                p_l.append(Predicate(f.fluent().name(), obj_l))
+            elif f.is_and():
+                for fl in f.args():
+                    assert fl.is_fluent_exp()
+                    obj_l: List[Tuple[str, Tuple[PyperplanType]]] = []
+                    for o in fl.args():
+                        obj_l.append((o.object().name(), (self._convert_type(o.object().type(), self._object_pyp_type), )))
+                    p_l.append(Predicate(fl.fluent().name(), obj_l))
         return p_l
 
     def _convert_initial_values(self, problem: 'upf.Problem') -> List[Predicate]:
@@ -143,7 +150,7 @@ class SolverImpl(upf.Solver):
                     signature = [(param_exp.parameter().name(),
                                   (self._convert_type(param_exp.parameter().type(), self._object_pyp_type), ))
                                  for param_exp in fl.args()]
-                    precond.append(Predicate(p.fluent().name(), signature))
+                    precond.append(Predicate(fl.fluent().name(), signature))
             else:
                 raise UPFUnsupportedProblemTypeError(f"In precondition: {p} of action: {action} is not an AND or a FLUENT")
         effect = Effect()

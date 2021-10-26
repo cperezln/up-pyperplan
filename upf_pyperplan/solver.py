@@ -78,7 +78,7 @@ class SolverImpl(upf.Solver):
         p_l: List[Predicate] = []
         for f in problem.goals():
             stack: List[FNode] = [f]
-            while len(stack) > 0:
+            while stack:
                 x = stack.pop()
                 if x.is_fluent_exp():
                     obj_l: List[Tuple[str, Tuple[PyperplanType]]] = []
@@ -139,7 +139,7 @@ class SolverImpl(upf.Solver):
         precond: List[Predicate] = []
         for p in action.preconditions():
             stack: List[FNode] = [p]
-            while len(stack) > 0:
+            while stack:
                 x = stack.pop()
                 if x.is_fluent_exp():
                     signature = [(param_exp.parameter().name(),

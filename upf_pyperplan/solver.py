@@ -76,22 +76,19 @@ class SolverImpl(upf.Solver):
 
     def _convert_goal(self, problem: 'upf.Problem') -> List[Predicate]:
         p_l: List[Predicate] = []
-        g_l: List[FNode] = []
         for f in problem.goals():
-            while True:
-                if f.is_fluent_exp():
+            stack: List[FNode] = [f]
+            while len(stack) > 0:
+                x = stack.pop()
+                if x.is_fluent_exp():
                     obj_l: List[Tuple[str, Tuple[PyperplanType]]] = []
-                    for o in f.args():
+                    for o in x.args():
                         obj_l.append((o.object().name(), (self._convert_type(o.object().type(), self._object_pyp_type), )))
-                    p_l.append(Predicate(f.fluent().name(), obj_l))
-                elif f.is_and():
-                    g_l.extend(f.args())
+                    p_l.append(Predicate(x.fluent().name(), obj_l))
+                elif x.is_and():
+                    stack.extend(x.args())
                 else:
-                    raise UPFUnsupportedProblemTypeError(f'The problem: {problem.name()} has expression: {f} into his goals.\nPyperplan does not support that operand.')
-                if len(g_l) > 0:
-                    f = g_l.pop()
-                else:
-                    break
+                    raise UPFUnsupportedProblemTypeError(f'The problem: {problem.name()} has expression: {x} into his goals.\nPyperplan does not support that operand.')
         return p_l
 
     def _convert_initial_values(self, problem: 'upf.Problem') -> List[Predicate]:
@@ -140,22 +137,19 @@ class SolverImpl(upf.Solver):
         act_sign: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(p.name(),
             (self._convert_type(p.type(), self._object_pyp_type), )) for p in action.parameters()]
         precond: List[Predicate] = []
-        p_stack: List[FNode] = []
         for p in action.preconditions():
-            while True:
-                if p.is_fluent_exp():
+            stack: List[FNode] = [p]
+            while len(stack) > 0:
+                x = stack.pop()
+                if x.is_fluent_exp():
                     signature = [(param_exp.parameter().name(),
                                 (self._convert_type(param_exp.parameter().type(), self._object_pyp_type), ))
-                                for param_exp in p.args()]
-                    precond.append(Predicate(p.fluent().name(), signature))
-                elif p.is_and():
-                    p_stack.extend(p.args())
+                                for param_exp in x.args()]
+                    precond.append(Predicate(x.fluent().name(), signature))
+                elif x.is_and():
+                    stack.extend(x.args())
                 else:
-                    raise UPFUnsupportedProblemTypeError(f"In precondition: {p} of action: {action} is not an AND or a FLUENT")
-                if len(p_stack) > 0:
-                    p = p_stack.pop()
-                else:
-                    break
+                    raise UPFUnsupportedProblemTypeError(f'In precondition: {x} of action: {action} is not an AND or a FLUENT')
         effect = Effect()
         add_set: Set[Predicate] = set()
         del_set: Set[Predicate] = set()

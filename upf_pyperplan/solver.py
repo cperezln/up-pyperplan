@@ -17,9 +17,9 @@ import re
 from typing import List, Dict, Optional, Set, Tuple
 import upf
 from upf.exceptions import UPFUnsupportedProblemTypeError
-from upf.fnode import FNode
-from upf.problem_kind import ProblemKind
-from upf.types import Type as UpfType
+from upf.model.fnode import FNode
+from upf.model.problem_kind import ProblemKind
+from upf.model.types import Type as UpfType
 
 from pyperplan.pddl.pddl import Action as PyperplanAction # type: ignore
 from pyperplan.pddl.pddl import Type as PyperplanType # type: ignore
@@ -30,7 +30,7 @@ from pyperplan.pddl.pddl import Predicate, Effect, Domain # type: ignore
 from pyperplan.planner import _ground, _search, SEARCHES, HEURISTICS # type: ignore
 
 
-class SolverImpl(upf.Solver):
+class SolverImpl(upf.solver.Solver):
     def __init__(self, **options):
         if len(options) > 0:
             raise

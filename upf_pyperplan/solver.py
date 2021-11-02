@@ -30,7 +30,7 @@ from pyperplan.pddl.pddl import Predicate, Effect, Domain # type: ignore
 from pyperplan.planner import _ground, _search, SEARCHES, HEURISTICS # type: ignore
 
 
-class SolverImpl(upf.solver.Solver):
+class SolverImpl(upf.solvers.Solver):
     def __init__(self, **options):
         if len(options) > 0:
             raise

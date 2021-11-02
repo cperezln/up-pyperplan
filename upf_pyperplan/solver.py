@@ -39,7 +39,7 @@ class SolverImpl(upf.solver.Solver):
     def name() -> str:
         return "Pyperplan"
 
-    def solve(self, problem: 'upf.Problem') -> Optional['upf.plan.SequentialPlan']:
+    def solve(self, problem: 'upf.model.Problem') -> Optional['upf.plan.SequentialPlan']:
         '''This function returns the SequentialPlan for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
@@ -60,7 +60,7 @@ class SolverImpl(upf.solver.Solver):
 
         return upf.plan.SequentialPlan(actions)
 
-    def _convert_string_to_action_instance(self, string: str, problem: 'upf.Problem') -> 'upf.plan.ActionInstance':
+    def _convert_string_to_action_instance(self, string: str, problem: 'upf.model.Problem') -> 'upf.plan.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"
         list_str = string[1:-1].split(" ")
         action = problem.action(list_str[0])
@@ -68,13 +68,13 @@ class SolverImpl(upf.solver.Solver):
         param = tuple(expr_manager.ObjectExp(problem.object(o_name)) for o_name in list_str[1:])
         return upf.plan.ActionInstance(action, param)
 
-    def _convert_problem(self, domain: Domain, problem: 'upf.Problem') -> PyperplanProblem:
+    def _convert_problem(self, domain: Domain, problem: 'upf.model.Problem') -> PyperplanProblem:
         objects: Dict[str, PyperplanType] = {o.name(): self._convert_type(o.type(), self._object_pyp_type) for o in problem.all_objects()}
         init: List[Predicate] = self._convert_initial_values(problem)
         goal: List[Predicate] = self._convert_goal(problem)
         return PyperplanProblem(problem.name(), domain, objects, init, goal)
 
-    def _convert_goal(self, problem: 'upf.Problem') -> List[Predicate]:
+    def _convert_goal(self, problem: 'upf.model.Problem') -> List[Predicate]:
         p_l: List[Predicate] = []
         for f in problem.goals():
             stack: List[FNode] = [f]
@@ -131,9 +131,9 @@ class SolverImpl(upf.solver.Solver):
         actions: Dict[str, PyperplanAction] = {a.name(): self._convert_action(a, problem.env) for a in problem.actions().values()}
         return Domain(f'domain_{problem.name()}', pyperplan_types, predicates,  actions)
 
-    def _convert_action(self, action: 'upf.Action', env) -> PyperplanAction:
+    def _convert_action(self, action: 'upf.model.Action', env) -> PyperplanAction:
         #action_signature
-        assert isinstance(action, upf.InstantaneousAction)
+        assert isinstance(action, upf.model.InstantaneousAction)
         act_sign: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(p.name(),
             (self._convert_type(p.type(), self._object_pyp_type), )) for p in action.parameters()]
         precond: List[Predicate] = []

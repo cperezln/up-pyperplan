@@ -91,7 +91,7 @@ class SolverImpl(upf.solver.Solver):
                     raise UPFUnsupportedProblemTypeError(f'The problem: {problem.name()} has expression: {x} into his goals.\nPyperplan does not support that operand.')
         return p_l
 
-    def _convert_initial_values(self, problem: 'upf.Problem') -> List[Predicate]:
+    def _convert_initial_values(self, problem: 'upf.model.Problem') -> List[Predicate]:
         p_l: List[Predicate] = []
         for f, v in problem.initial_values().items():
             if not v.is_bool_constant():
@@ -103,7 +103,7 @@ class SolverImpl(upf.solver.Solver):
                 p_l.append(Predicate(f.fluent().name(), obj_l))
         return p_l
 
-    def _convert_domain(self, problem: 'upf.Problem') -> Domain:
+    def _convert_domain(self, problem: 'upf.model.Problem') -> Domain:
         if problem.kind().has_negative_conditions(): # type: ignore
             raise UPFUnsupportedProblemTypeError(f"Problem: {problem} contains negative preconditions or negative goals. The solver Pyperplan does not support that!")
         if problem.kind().has_disjunctive_conditions(): # type: ignore

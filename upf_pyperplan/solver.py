@@ -72,7 +72,7 @@ class SolverImpl(upf.solvers.Solver):
         objects: Dict[str, PyperplanType] = {o.name(): self._convert_type(o.type(), self._object_pyp_type) for o in problem.all_objects()}
         init: List[Predicate] = self._convert_initial_values(problem)
         goal: List[Predicate] = self._convert_goal(problem)
-        return PyperplanProblem(problem.name(), domain, objects, init, goal)
+        return PyperplanProblem(problem.name, domain, objects, init, goal)
 
     def _convert_goal(self, problem: 'upf.model.Problem') -> List[Predicate]:
         p_l: List[Predicate] = []
@@ -88,7 +88,7 @@ class SolverImpl(upf.solvers.Solver):
                 elif x.is_and():
                     stack.extend(x.args())
                 else:
-                    raise UPFUnsupportedProblemTypeError(f'The problem: {problem.name()} has expression: {x} into his goals.\nPyperplan does not support that operand.')
+                    raise UPFUnsupportedProblemTypeError(f'The problem: {problem.name} has expression: {x} into his goals.\nPyperplan does not support that operand.')
         return p_l
 
     def _convert_initial_values(self, problem: 'upf.model.Problem') -> List[Predicate]:
@@ -128,8 +128,8 @@ class SolverImpl(upf.solvers.Solver):
             for _, t in enumerate(f.signature()):
                 pred_sign.append((f'a_{_}', (self._convert_type(t, self._object_pyp_type), )))
             predicates[n] = Predicate(n, pred_sign)
-        actions: Dict[str, PyperplanAction] = {a.name(): self._convert_action(a, problem.env) for a in problem.actions().values()}
-        return Domain(f'domain_{problem.name()}', pyperplan_types, predicates,  actions)
+        actions: Dict[str, PyperplanAction] = {a.name: self._convert_action(a, problem.env) for a in problem.actions().values()}
+        return Domain(f'domain_{problem.name}', pyperplan_types, predicates,  actions)
 
     def _convert_action(self, action: 'upf.model.Action', env) -> PyperplanAction:
         #action_signature
@@ -164,7 +164,7 @@ class SolverImpl(upf.solvers.Solver):
                 del_set.add(Predicate(e.fluent().fluent().name(), params))
         effect.addlist = add_set
         effect.dellist = del_set
-        return PyperplanAction(action.name(), act_sign, precond, effect)
+        return PyperplanAction(action.name, act_sign, precond, effect)
 
     def _convert_type(self, type: UpfType, parent: PyperplanType) -> PyperplanType:
         assert type.is_user_type()

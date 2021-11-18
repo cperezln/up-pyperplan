@@ -179,7 +179,7 @@ class SolverImpl(upf.solvers.Solver):
     def supports(problem_kind):
         supported_kind = ProblemKind()
         supported_kind.set_typing('FLAT_TYPING')
-        return problem_kind < supported_kind
+        return problem_kind <= supported_kind
 
     @staticmethod
     def is_oneshot_planner():

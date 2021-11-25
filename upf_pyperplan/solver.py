@@ -18,13 +18,7 @@ from typing import List, Dict, Optional, Set, Tuple
 import upf
 import upf.solvers
 from upf.exceptions import UPFUnsupportedProblemTypeError
-<<<<<<< HEAD
-from upf.model.fnode import FNode
-from upf.model.problem_kind import ProblemKind
-from upf.model.types import Type as UpfType
-=======
 from upf.model import FNode, ProblemKind, Type as UpfType
->>>>>>> Created a new setup.py file and removed old installers
 
 from pyperplan.pddl.pddl import Action as PyperplanAction # type: ignore
 from pyperplan.pddl.pddl import Type as PyperplanType # type: ignore

@@ -16,6 +16,7 @@
 import re
 from typing import List, Dict, Optional, Set, Tuple
 import upf
+import upf.solvers
 from upf.exceptions import UPFUnsupportedProblemTypeError
 <<<<<<< HEAD
 from upf.model.fnode import FNode

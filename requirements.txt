@@ -1,0 +1,2 @@
+pyperplan
+'git+https://github.com/aiplan4eu/upf.git'

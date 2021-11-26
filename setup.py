@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-from setuptools import setup, find_packages # type: ignore
+from setuptools import setup # type: ignore
 
-upf_commit = '6b712922217df6b3e4e78eb8c14c652756b230a7'
+upf_commit = 'e5cfd58ac83cfd96556fd4461517b4c1a5330bfb'
 
 
 long_description=\

@@ -128,7 +128,7 @@ class SolverImpl(upf.solvers.Solver):
             for _, t in enumerate(f.signature()):
                 pred_sign.append((f'a_{_}', (self._convert_type(t, self._object_pyp_type), )))
             predicates[n] = Predicate(n, pred_sign)
-        actions: Dict[str, PyperplanAction] = {a.name: self._convert_action(a, problem.env) for a in problem.actions().values()}
+        actions: Dict[str, PyperplanAction] = {a.name: self._convert_action(a, problem.env) for a in problem.actions_list()}
         return Domain(f'domain_{problem.name}', pyperplan_types, predicates,  actions)
 
     def _convert_action(self, action: 'upf.model.Action', env) -> PyperplanAction:

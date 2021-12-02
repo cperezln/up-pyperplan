@@ -2,8 +2,6 @@
 
 from setuptools import setup # type: ignore
 
-upf_commit = 'e5cfd58ac83cfd96556fd4461517b4c1a5330bfb'
-
 
 long_description=\
 """============================================================
@@ -19,8 +17,8 @@ setup(name='upf_pyperplan',
       description='upf_pyperplan',
       author='AIPlan4EU Organization',
       author_email='aiplan4eu@fbk.eu',
-      url='https://aiplan4eu.fbk.eu/',
+      url='https://www.aiplan4eu-project.eu',
       packages=['upf_pyperplan'],
-      install_requires=[f'upf@git+https://github.com/aiplan4eu/upf.git@{upf_commit}', 'pyperplan'],
+      install_requires=['pyperplan'],
       license='APACHE'
      )

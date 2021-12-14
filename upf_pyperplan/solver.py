@@ -19,6 +19,7 @@ import upf
 import upf.solvers
 from upf.exceptions import UPFUnsupportedProblemTypeError
 from upf.model import FNode, ProblemKind, Type as UpfType
+from upf_pyperplan.grounder import rewrite_back_task
 
 from pyperplan.pddl.pddl import Action as PyperplanAction # type: ignore
 from pyperplan.pddl.pddl import Type as PyperplanType # type: ignore
@@ -37,6 +38,13 @@ class SolverImpl(upf.solvers.Solver):
     @staticmethod
     def name() -> str:
         return "Pyperplan"
+
+    def ground(self, problem: 'upf.model.Problem') -> 'upf.model.Problem':
+        dom = self._convert_domain(problem)
+        prob = self._convert_problem(dom, problem)
+        search = SEARCHES["bfs"]
+        task = _ground(prob)
+        return rewrite_back_task(task)
 
     def solve(self, problem: 'upf.model.Problem') -> Optional['upf.plan.SequentialPlan']:
         '''This function returns the SequentialPlan for the problem given in input.

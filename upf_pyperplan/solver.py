@@ -13,8 +13,9 @@
 # limitations under the License.
 
 
+from functools import partial
 import re
-from typing import List, Dict, Optional, Set, Tuple
+from typing import Callable, List, Dict, Optional, Set, Tuple
 import upf
 import upf.solvers
 from upf.exceptions import UPFUnsupportedProblemTypeError
@@ -39,18 +40,19 @@ class SolverImpl(upf.solvers.Solver):
     def name() -> str:
         return "Pyperplan"
 
-    def ground(self, problem: 'upf.model.Problem') -> 'upf.model.Problem':
+    def ground(self, problem: 'upf.model.Problem') -> Tuple['upf.model.Problem', Callable[['upf.plan.Plan'], 'upf.plan.Plan']]:
+        self.pyp_types: Dict[str, PyperplanType] = {}
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)
-        search = SEARCHES["bfs"]
         task = _ground(prob)
-        return rewrite_back_task(task)
+        grounded_problem, rewrite_back_map = rewrite_back_task(task, problem)
+        return (grounded_problem, partial(upf.solvers.grounder.lift_plan, map=rewrite_back_map))
 
     def solve(self, problem: 'upf.model.Problem') -> Optional['upf.plan.SequentialPlan']:
         '''This function returns the SequentialPlan for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
-        self.pyp_types: Dict[str, PyperplanType] = {}
+        self.pyp_types: Dict[str, PyperplanType] = {} # type: ignore
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)
         search = SEARCHES["bfs"]
@@ -190,6 +192,10 @@ class SolverImpl(upf.solvers.Solver):
 
     @staticmethod
     def is_oneshot_planner():
+        return True
+
+    @staticmethod
+    def is_grounder():
         return True
 
     def destroy(self):

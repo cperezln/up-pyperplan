@@ -163,9 +163,16 @@ class SolverImpl(upf.solvers.Solver):
         add_set: Set[Predicate] = set()
         del_set: Set[Predicate] = set()
         for e in action.effects():
-            params: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(p.parameter().name(),
-                                        (self._convert_type(p.parameter().type(), self._object_pyp_type), ))
-                                        for p in e.fluent().args()]
+            params: List[Tuple[str, Tuple[PyperplanType, ...]]] = []
+            for p in e.fluent().args():
+                if p.is_parameter_exp():
+                    params.append((p.parameter().name(),
+                                (self._convert_type(p.parameter().type(), self._object_pyp_type), )))
+                elif p.is_object_exp():
+                    params.append((p.object().name(),
+                                (self._convert_type(p.object().type(), self._object_pyp_type), )))
+                else:
+                    raise NotImplementedError
             assert not e.is_conditional()
             if e.value().bool_constant_value():
                 add_set.add(Predicate(e.fluent().fluent().name(), params))

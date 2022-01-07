@@ -13,12 +13,14 @@
 # limitations under the License.
 
 
+from functools import partial
 import re
-from typing import List, Dict, Optional, Set, Tuple
+from typing import Callable, List, Dict, Optional, Set, Tuple
 import upf
 import upf.solvers
 from upf.exceptions import UPFUnsupportedProblemTypeError
 from upf.model import FNode, ProblemKind, Type as UpfType
+from upf_pyperplan.grounder import rewrite_back_task
 
 from pyperplan.pddl.pddl import Action as PyperplanAction # type: ignore
 from pyperplan.pddl.pddl import Type as PyperplanType # type: ignore
@@ -38,11 +40,19 @@ class SolverImpl(upf.solvers.Solver):
     def name() -> str:
         return "Pyperplan"
 
+    def ground(self, problem: 'upf.model.Problem') -> Tuple['upf.model.Problem', Callable[['upf.plan.Plan'], 'upf.plan.Plan']]:
+        self.pyp_types: Dict[str, PyperplanType] = {}
+        dom = self._convert_domain(problem)
+        prob = self._convert_problem(dom, problem)
+        task = _ground(prob)
+        grounded_problem, rewrite_back_map = rewrite_back_task(task, problem)
+        return (grounded_problem, partial(upf.solvers.grounder.lift_plan, map=rewrite_back_map))
+
     def solve(self, problem: 'upf.model.Problem') -> Optional['upf.plan.SequentialPlan']:
         '''This function returns the SequentialPlan for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
-        self.pyp_types: Dict[str, PyperplanType] = {}
+        self.pyp_types: Dict[str, PyperplanType] = {} # type: ignore
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)
         search = SEARCHES["bfs"]
@@ -153,9 +163,16 @@ class SolverImpl(upf.solvers.Solver):
         add_set: Set[Predicate] = set()
         del_set: Set[Predicate] = set()
         for e in action.effects():
-            params: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(p.parameter().name(),
-                                        (self._convert_type(p.parameter().type(), self._object_pyp_type), ))
-                                        for p in e.fluent().args()]
+            params: List[Tuple[str, Tuple[PyperplanType, ...]]] = []
+            for p in e.fluent().args():
+                if p.is_parameter_exp():
+                    params.append((p.parameter().name(),
+                                (self._convert_type(p.parameter().type(), self._object_pyp_type), )))
+                elif p.is_object_exp():
+                    params.append((p.object().name(),
+                                (self._convert_type(p.object().type(), self._object_pyp_type), )))
+                else:
+                    raise NotImplementedError
             assert not e.is_conditional()
             if e.value().bool_constant_value():
                 add_set.add(Predicate(e.fluent().fluent().name(), params))
@@ -182,6 +199,10 @@ class SolverImpl(upf.solvers.Solver):
 
     @staticmethod
     def is_oneshot_planner():
+        return True
+
+    @staticmethod
+    def is_grounder():
         return True
 
     def destroy(self):

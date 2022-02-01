@@ -5,20 +5,20 @@ from setuptools import setup # type: ignore
 
 long_description=\
 """============================================================
-    UPF_PYPERPLAN
+    UP_PYPERPLAN
  ============================================================
 
-    upf_pyperplan is a small package that allows an exchange of
-    equivalent data structures between UPF and Pyperplan.
+    up_pyperplan is a small package that allows an exchange of
+    equivalent data structures between unified_planning and Pyperplan.
 """
 
-setup(name='upf_pyperplan',
+setup(name='up_pyperplan',
       version='0.0.1',
-      description='upf_pyperplan',
+      description='up_pyperplan',
       author='AIPlan4EU Organization',
       author_email='aiplan4eu@fbk.eu',
       url='https://www.aiplan4eu-project.eu',
-      packages=['upf_pyperplan'],
+      packages=['up_pyperplan'],
       install_requires=['pyperplan'],
       license='APACHE'
      )

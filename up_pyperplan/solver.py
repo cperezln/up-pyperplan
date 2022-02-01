@@ -16,11 +16,11 @@
 from functools import partial
 import re
 from typing import Callable, List, Dict, Optional, Set, Tuple
-import upf
-import upf.solvers
-from upf.exceptions import UPFUnsupportedProblemTypeError
-from upf.model import FNode, ProblemKind, Type as UpfType
-from upf_pyperplan.grounder import rewrite_back_task
+import unified_planning as up
+import unified_planning.solvers
+from unified_planning.exceptions import UPUnsupportedProblemTypeError
+from unified_planning.model import FNode, ProblemKind, Type as UPType
+from up_pyperplan.grounder import rewrite_back_task
 
 from pyperplan.pddl.pddl import Action as PyperplanAction # type: ignore
 from pyperplan.pddl.pddl import Type as PyperplanType # type: ignore
@@ -31,7 +31,7 @@ from pyperplan.pddl.pddl import Predicate, Effect, Domain # type: ignore
 from pyperplan.planner import _ground, _search, SEARCHES, HEURISTICS # type: ignore
 
 
-class SolverImpl(upf.solvers.Solver):
+class SolverImpl(unified_planning.solvers.Solver):
     def __init__(self, **options):
         if len(options) > 0:
             raise
@@ -40,15 +40,15 @@ class SolverImpl(upf.solvers.Solver):
     def name() -> str:
         return "Pyperplan"
 
-    def ground(self, problem: 'upf.model.Problem') -> Tuple['upf.model.Problem', Callable[['upf.plan.Plan'], 'upf.plan.Plan']]:
+    def ground(self, problem: 'up.model.Problem') -> Tuple['up.model.Problem', Callable[['up.plan.Plan'], 'up.plan.Plan']]:
         self.pyp_types: Dict[str, PyperplanType] = {}
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)
         task = _ground(prob)
         grounded_problem, rewrite_back_map = rewrite_back_task(task, problem)
-        return (grounded_problem, partial(upf.solvers.grounder.lift_plan, map=rewrite_back_map))
+        return (grounded_problem, partial(up.solvers.grounder.lift_plan, map=rewrite_back_map))
 
-    def solve(self, problem: 'upf.model.Problem') -> Optional['upf.plan.SequentialPlan']:
+    def solve(self, problem: 'up.model.Problem') -> Optional['up.plan.SequentialPlan']:
         '''This function returns the SequentialPlan for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
@@ -61,29 +61,29 @@ class SolverImpl(upf.solvers.Solver):
         # if not heuristic_class is None:
         #     heuristic = heuristic_class(task)
         solution = _search(task, search, heuristic)
-        actions: List[upf.plan.ActionInstance] = []
+        actions: List[up.plan.ActionInstance] = []
         if solution is None:
             return None
         for action_string in solution:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
 
-        return upf.plan.SequentialPlan(actions)
+        return up.plan.SequentialPlan(actions)
 
-    def _convert_string_to_action_instance(self, string: str, problem: 'upf.model.Problem') -> 'upf.plan.ActionInstance':
+    def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plan.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"
         list_str = string[1:-1].split(" ")
         action = problem.action(list_str[0])
         expr_manager = problem.env.expression_manager
         param = tuple(expr_manager.ObjectExp(problem.object(o_name)) for o_name in list_str[1:])
-        return upf.plan.ActionInstance(action, param)
+        return up.plan.ActionInstance(action, param)
 
-    def _convert_problem(self, domain: Domain, problem: 'upf.model.Problem') -> PyperplanProblem:
+    def _convert_problem(self, domain: Domain, problem: 'up.model.Problem') -> PyperplanProblem:
         objects: Dict[str, PyperplanType] = {o.name(): self._convert_type(o.type(), self._object_pyp_type) for o in problem.all_objects()}
         init: List[Predicate] = self._convert_initial_values(problem)
         goal: List[Predicate] = self._convert_goal(problem)
         return PyperplanProblem(problem.name, domain, objects, init, goal)
 
-    def _convert_goal(self, problem: 'upf.model.Problem') -> List[Predicate]:
+    def _convert_goal(self, problem: 'up.model.Problem') -> List[Predicate]:
         p_l: List[Predicate] = []
         for f in problem.goals():
             stack: List[FNode] = [f]
@@ -97,14 +97,14 @@ class SolverImpl(upf.solvers.Solver):
                 elif x.is_and():
                     stack.extend(x.args())
                 else:
-                    raise UPFUnsupportedProblemTypeError(f'The problem: {problem.name} has expression: {x} into his goals.\nPyperplan does not support that operand.')
+                    raise UPUnsupportedProblemTypeError(f'The problem: {problem.name} has expression: {x} into his goals.\nPyperplan does not support that operand.')
         return p_l
 
-    def _convert_initial_values(self, problem: 'upf.model.Problem') -> List[Predicate]:
+    def _convert_initial_values(self, problem: 'up.model.Problem') -> List[Predicate]:
         p_l: List[Predicate] = []
         for f, v in problem.initial_values().items():
             if not v.is_bool_constant():
-                raise UPFUnsupportedProblemTypeError(f"Initial value: {v} of fluent: {f} is not True or False.")
+                raise UPUnsupportedProblemTypeError(f"Initial value: {v} of fluent: {f} is not True or False.")
             if v.bool_constant_value():
                 obj_l: List[Tuple[str, PyperplanType]] = []
                 for o in f.args():
@@ -112,18 +112,18 @@ class SolverImpl(upf.solvers.Solver):
                 p_l.append(Predicate(f.fluent().name(), obj_l))
         return p_l
 
-    def _convert_domain(self, problem: 'upf.model.Problem') -> Domain:
+    def _convert_domain(self, problem: 'up.model.Problem') -> Domain:
         if problem.kind().has_negative_conditions(): # type: ignore
-            raise UPFUnsupportedProblemTypeError(f"Problem: {problem} contains negative preconditions or negative goals. The solver Pyperplan does not support that!")
+            raise UPUnsupportedProblemTypeError(f"Problem: {problem} contains negative preconditions or negative goals. The solver Pyperplan does not support that!")
         if problem.kind().has_disjunctive_conditions(): # type: ignore
-            raise UPFUnsupportedProblemTypeError(f"Problem: {problem} contains disjunctive preconditions. The solver Pyperplan does not support that!")
+            raise UPUnsupportedProblemTypeError(f"Problem: {problem} contains disjunctive preconditions. The solver Pyperplan does not support that!")
         if problem.kind().has_equality(): # type: ignore
-            raise UPFUnsupportedProblemTypeError(f"Problem {problem} contains an equality symbol. The solver Pyperplan does not support that!")
+            raise UPUnsupportedProblemTypeError(f"Problem {problem} contains an equality symbol. The solver Pyperplan does not support that!")
         if (problem.kind().has_continuous_numbers() or # type: ignore
             problem.kind().has_discrete_numbers()): # type: ignore
-            raise UPFUnsupportedProblemTypeError(f"Problem {problem} contains numbers. The solver Pyperplan does not support that!")
+            raise UPUnsupportedProblemTypeError(f"Problem {problem} contains numbers. The solver Pyperplan does not support that!")
         if problem.kind().has_conditional_effects(): # type: ignore
-            raise UPFUnsupportedProblemTypeError(f"Problem {problem} contains conditional effects. The solver Pyperplan does not support that!")
+            raise UPUnsupportedProblemTypeError(f"Problem {problem} contains conditional effects. The solver Pyperplan does not support that!")
         if problem.has_type("object"):
             self._object_pyp_type = self._convert_type(problem.user_type("object"), None)
         else:
@@ -140,9 +140,9 @@ class SolverImpl(upf.solvers.Solver):
         actions: Dict[str, PyperplanAction] = {a.name: self._convert_action(a, problem.env) for a in problem.actions()}
         return Domain(f'domain_{problem.name}', pyperplan_types, predicates,  actions)
 
-    def _convert_action(self, action: 'upf.model.Action', env) -> PyperplanAction:
+    def _convert_action(self, action: 'up.model.Action', env) -> PyperplanAction:
         #action_signature
-        assert isinstance(action, upf.model.InstantaneousAction)
+        assert isinstance(action, up.model.InstantaneousAction)
         act_sign: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(p.name(),
             (self._convert_type(p.type(), self._object_pyp_type), )) for p in action.parameters()]
         precond: List[Predicate] = []
@@ -158,7 +158,7 @@ class SolverImpl(upf.solvers.Solver):
                 elif x.is_and():
                     stack.extend(x.args())
                 else:
-                    raise UPFUnsupportedProblemTypeError(f'In precondition: {x} of action: {action} is not an AND or a FLUENT')
+                    raise UPUnsupportedProblemTypeError(f'In precondition: {x} of action: {action} is not an AND or a FLUENT')
         effect = Effect()
         add_set: Set[Predicate] = set()
         del_set: Set[Predicate] = set()
@@ -182,7 +182,7 @@ class SolverImpl(upf.solvers.Solver):
         effect.dellist = del_set
         return PyperplanAction(action.name, act_sign, precond, effect)
 
-    def _convert_type(self, type: UpfType, parent: PyperplanType) -> PyperplanType:
+    def _convert_type(self, type: UPType, parent: PyperplanType) -> PyperplanType:
         assert type.is_user_type()
         t = self.pyp_types.get(type.name(), None) # type: ignore
         if t is not None:

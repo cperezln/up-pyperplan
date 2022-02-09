@@ -14,7 +14,6 @@
 
 
 from functools import partial
-import re
 from typing import Callable, List, Dict, Optional, Set, Tuple
 import unified_planning as up
 import unified_planning.solvers

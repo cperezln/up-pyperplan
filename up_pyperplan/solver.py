@@ -124,12 +124,11 @@ class SolverImpl(unified_planning.solvers.Solver):
             raise UPUnsupportedProblemTypeError(f"Problem {problem} contains numbers. The solver Pyperplan does not support that!")
         if problem.kind().has_conditional_effects(): # type: ignore
             raise UPUnsupportedProblemTypeError(f"Problem {problem} contains conditional effects. The solver Pyperplan does not support that!")
-        if problem.has_type("object"): #NOTE this if might be removed
-            self._object_pyp_type = self._convert_type(problem.user_type("object"))
-        else:
-            self._object_pyp_type = PyperplanType("object", None)
-            self.pyp_types["object"] = self._object_pyp_type
-        pyperplan_types = [self._object_pyp_type] + [self._convert_type(t) for t in problem.user_types() if t.name() != "object"] # type: ignore
+        self._has_object_type: bool = problem.has_type('object')
+        if not self._has_object_type:
+            self.pyp_types['object']  = PyperplanType('object', None)
+        self.pyp_types.update({t.name(): self._convert_type(t) for t in problem.user_types()}) # type: ignore
+        pyperplan_types = [self.pyp_types.values()]
         predicates: Dict[str, Predicate] = {}
         for f in problem.fluents():
             #predicate_signature
@@ -151,9 +150,14 @@ class SolverImpl(unified_planning.solvers.Solver):
             while stack:
                 x = stack.pop()
                 if x.is_fluent_exp():
-                    signature = [(param_exp.parameter().name(),
-                                (self._convert_type(param_exp.parameter().type()), ))
-                                for param_exp in x.args()]
+                    signature = []
+                    for exp in x.args():
+                        if exp.is_parameter_exp():
+                            signature.append((exp.parameter().name(), (self._convert_type(exp.parameter().type()), )))
+                        elif exp.is_object_exp():
+                            signature.append((exp.object().name(), (self._convert_type(exp.object().type()), )))
+                        else:
+                            raise NotImplementedError
                     precond.append(Predicate(x.fluent().name(), signature))
                 elif x.is_and():
                     stack.extend(x.args())
@@ -185,11 +189,15 @@ class SolverImpl(unified_planning.solvers.Solver):
     def _convert_type(self, type: UPType) -> PyperplanType:
         assert type.is_user_type()
         t = self.pyp_types.get(type.name(), None) # type: ignore
-        father = self.pyp_types['object']
-        if t is not None:
+        father: Optional[PyperplanType] = None
+        if t is not None: # type already defined
             return t
-        elif type.father() is not None:
+        elif type.father() is not None: # type's father is clear
             father = self._convert_type(type.father())
+        elif not self._has_object_type: # type father is None and object type is not used, so it's father is pyperplan is 'object'
+            father = self.pyp_types['object']
+        #else:          # type father is None and object type is used in the problem, so his father also in pyperplan 
+        #   pass        # must be None; which already is.
         new_t = PyperplanType(type.name(), father) # type: ignore
         self.pyp_types[type.name()] = new_t # type: ignore
         return new_t

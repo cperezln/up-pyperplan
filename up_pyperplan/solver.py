@@ -132,8 +132,8 @@ class SolverImpl(unified_planning.solvers.Solver):
         for f in problem.fluents():
             #predicate_signature
             pred_sign: List[Tuple[str, Tuple[PyperplanType]]] = []
-            for _, t in enumerate(f.signature()):
-                pred_sign.append((f'a_{_}', (self._convert_type(t), )))
+            for n, t in f.signature().items():
+                pred_sign.append((n, (self._convert_type(t), )))
             predicates[f.name()] = Predicate(f.name(), pred_sign)
         actions: Dict[str, PyperplanAction] = {a.name: self._convert_action(a, problem.env) for a in problem.actions()}
         return Domain(f'domain_{problem.name}', pyperplan_types, predicates,  actions)

@@ -47,7 +47,7 @@ class SolverImpl(unified_planning.solvers.Solver):
         grounded_problem, rewrite_back_map = rewrite_back_task(task, problem)
         return (grounded_problem, partial(up.solvers.grounder.lift_plan, map=rewrite_back_map))
 
-    def solve(self, problem: 'up.model.Problem', callback: Optional[Callable[['up.plan.IntermediateReport'], None]] = None) -> 'up.plan.FinalReport':
+    def solve(self, problem: 'up.model.Problem', callback: Optional[Callable[['up.plan.PlanGenerationResult'], None]] = None) -> 'up.plan.PlanGenerationResult':
         '''This function returns the SequentialPlan for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
@@ -65,7 +65,7 @@ class SolverImpl(unified_planning.solvers.Solver):
             return up.plan.FinalReport(up.plan.UNSATISFIED, None, self.name())
         for action_string in solution:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
-        return up.plan.FinalReport(up.plan.SATISFIED, up.plan.SequentialPlan(actions), self.name())
+        return up.plan.PlanGenerationResult(up.plan.SATISFIED, up.plan.SequentialPlan(actions), self.name())
 
     def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plan.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"

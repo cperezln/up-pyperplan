@@ -15,6 +15,7 @@
 
 from functools import partial
 from typing import Callable, List, Dict, Optional, Set, Tuple
+import warnings
 import unified_planning as up
 import unified_planning.solvers
 from unified_planning.exceptions import UPUnsupportedProblemTypeError
@@ -47,10 +48,15 @@ class SolverImpl(unified_planning.solvers.Solver):
         grounded_problem, rewrite_back_map = rewrite_back_task(task, problem)
         return (grounded_problem, partial(up.solvers.grounder.lift_plan, map=rewrite_back_map))
 
-    def solve(self, problem: 'up.model.Problem', callback: Optional[Callable[['up.solvers.PlanGenerationResult'], None]] = None) -> 'up.solvers.PlanGenerationResult':
-        '''This function returns the SequentialPlan for the problem given in input.
+    def solve(self, problem: 'up.model.Problem', 
+                callback: Optional[Callable[['up.solvers.PlanGenerationResult'], None]] = None,
+                timeout_seconds: Optional[float] = None) -> 'up.solvers.results.PlanGenerationResult':
+        '''This function returns the PlanGenerationResult for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
+        assert self.supports(problem.kind())
+        if timeout_seconds is not None:
+            warnings.warn('Pyperplan does not support timeout.', UserWarning)
         self.pyp_types: Dict[str, PyperplanType] = {} # type: ignore
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)

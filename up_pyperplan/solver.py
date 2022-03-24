@@ -14,7 +14,7 @@
 
 
 from functools import partial
-from typing import Callable, List, Dict, Optional, Set, Tuple
+from typing import IO, Callable, List, Dict, Optional, Set, Tuple
 import warnings
 import unified_planning as up
 import unified_planning.solvers
@@ -50,13 +50,16 @@ class SolverImpl(unified_planning.solvers.Solver):
 
     def solve(self, problem: 'up.model.Problem',
                 callback: Optional[Callable[['up.solvers.PlanGenerationResult'], None]] = None,
-                timeout: Optional[float] = None) -> 'up.solvers.results.PlanGenerationResult':
+                timeout: Optional[float] = None,
+                output_stream: Optional[IO[str]] = None) -> 'up.solvers.results.PlanGenerationResult':
         '''This function returns the PlanGenerationResult for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
         assert self.supports(problem.kind())
         if timeout is not None:
             warnings.warn('Pyperplan does not support timeout.', UserWarning)
+        if output_stream is not None:
+            warnings.warn('Pyperplan does not support output stream.', UserWarning)
         self.pyp_types: Dict[str, PyperplanType] = {} # type: ignore
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)

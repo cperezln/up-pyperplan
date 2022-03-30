@@ -36,8 +36,8 @@ class SolverImpl(unified_planning.solvers.Solver):
         if len(options) > 0:
             raise
 
-    @staticmethod
-    def name() -> str:
+    @property
+    def name(self) -> str:
         return "Pyperplan"
 
     def ground(self, problem: 'up.model.Problem') -> Tuple['up.model.Problem', Callable[['up.plan.Plan'], 'up.plan.Plan']]:
@@ -74,7 +74,7 @@ class SolverImpl(unified_planning.solvers.Solver):
             return up.plan.FinalReport(up.solvers.results.UNSOLVABLE_PROVEN, None, self.name)
         for action_string in solution:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
-        return up.solvers.PlanGenerationResult(up.solvers.results.SOLVED_SATISFICING, up.plan.SequentialPlan(actions), self.name())
+        return up.solvers.PlanGenerationResult(up.solvers.results.SOLVED_SATISFICING, up.plan.SequentialPlan(actions), self.name)
 
     def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plan.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"

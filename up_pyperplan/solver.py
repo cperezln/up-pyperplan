@@ -14,7 +14,8 @@
 
 
 from functools import partial
-from typing import Callable, List, Dict, Optional, Set, Tuple
+from typing import IO, Callable, List, Dict, Optional, Set, Tuple
+import warnings
 import unified_planning as up
 import unified_planning.solvers
 from unified_planning.exceptions import UPUnsupportedProblemTypeError
@@ -47,10 +48,18 @@ class SolverImpl(unified_planning.solvers.Solver):
         grounded_problem, rewrite_back_map = rewrite_back_task(task, problem)
         return (grounded_problem, partial(up.solvers.grounder.lift_plan, map=rewrite_back_map))
 
-    def solve(self, problem: 'up.model.Problem') -> Optional['up.plan.SequentialPlan']:
-        '''This function returns the SequentialPlan for the problem given in input.
+    def solve(self, problem: 'up.model.Problem',
+                callback: Optional[Callable[['up.solvers.PlanGenerationResult'], None]] = None,
+                timeout: Optional[float] = None,
+                output_stream: Optional[IO[str]] = None) -> 'up.solvers.results.PlanGenerationResult':
+        '''This function returns the PlanGenerationResult for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
+        assert self.supports(problem.kind())
+        if timeout is not None:
+            warnings.warn('Pyperplan does not support timeout.', UserWarning)
+        if output_stream is not None:
+            warnings.warn('Pyperplan does not support output stream.', UserWarning)
         self.pyp_types: Dict[str, PyperplanType] = {} # type: ignore
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)
@@ -62,11 +71,10 @@ class SolverImpl(unified_planning.solvers.Solver):
         solution = _search(task, search, heuristic)
         actions: List[up.plan.ActionInstance] = []
         if solution is None:
-            return None
+            return up.plan.FinalReport(up.solvers.results.UNSOLVABLE_PROVEN, None, self.name())
         for action_string in solution:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
-
-        return up.plan.SequentialPlan(actions)
+        return up.solvers.PlanGenerationResult(up.solvers.results.SOLVED_SATISFICING, up.plan.SequentialPlan(actions), self.name())
 
     def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plan.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"
@@ -195,7 +203,7 @@ class SolverImpl(unified_planning.solvers.Solver):
             father = self._convert_type(type.father())
         elif not self._has_object_type: # type father is None and object type is not used, so it's father is pyperplan is 'object'
             father = self.pyp_types['object']
-        #else:          # type father is None and object type is used in the problem, so his father also in pyperplan 
+        #else:          # type father is None and object type is used in the problem, so his father also in pyperplan
         #   pass        # must be None; which already is.
         new_t = PyperplanType(type.name(), father) # type: ignore
         self.pyp_types[type.name()] = new_t # type: ignore

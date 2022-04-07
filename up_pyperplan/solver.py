@@ -36,8 +36,8 @@ class SolverImpl(unified_planning.solvers.Solver):
         if len(options) > 0:
             raise
 
-    @staticmethod
-    def name() -> str:
+    @property
+    def name(self) -> str:
         return "Pyperplan"
 
     def ground(self, problem: 'up.model.Problem') -> Tuple['up.model.Problem', Callable[['up.plan.Plan'], 'up.plan.Plan']]:
@@ -55,7 +55,7 @@ class SolverImpl(unified_planning.solvers.Solver):
         '''This function returns the PlanGenerationResult for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
-        assert self.supports(problem.kind())
+        assert self.supports(problem.kind)
         if timeout is not None:
             warnings.warn('Pyperplan does not support timeout.', UserWarning)
         if output_stream is not None:
@@ -71,10 +71,10 @@ class SolverImpl(unified_planning.solvers.Solver):
         solution = _search(task, search, heuristic)
         actions: List[up.plan.ActionInstance] = []
         if solution is None:
-            return up.plan.FinalReport(up.solvers.results.UNSOLVABLE_PROVEN, None, self.name())
+            return up.plan.FinalReport(up.solvers.results.UNSOLVABLE_PROVEN, None, self.name)
         for action_string in solution:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
-        return up.solvers.PlanGenerationResult(up.solvers.results.SOLVED_SATISFICING, up.plan.SequentialPlan(actions), self.name())
+        return up.solvers.PlanGenerationResult(up.solvers.results.SOLVED_SATISFICING, up.plan.SequentialPlan(actions), self.name)
 
     def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plan.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"
@@ -85,128 +85,128 @@ class SolverImpl(unified_planning.solvers.Solver):
         return up.plan.ActionInstance(action, param)
 
     def _convert_problem(self, domain: Domain, problem: 'unified_planning.model.Problem') -> PyperplanProblem:
-        objects: Dict[str, PyperplanType] = {o.name(): self._convert_type(o.type()) for o in problem.all_objects()}
+        objects: Dict[str, PyperplanType] = {o.name: self._convert_type(o.type) for o in problem.all_objects}
         init: List[Predicate] = self._convert_initial_values(problem)
         goal: List[Predicate] = self._convert_goal(problem)
         return PyperplanProblem(problem.name, domain, objects, init, goal)
 
     def _convert_goal(self, problem: 'up.model.Problem') -> List[Predicate]:
         p_l: List[Predicate] = []
-        for f in problem.goals():
+        for f in problem.goals:
             stack: List[FNode] = [f]
             while stack:
                 x = stack.pop()
                 if x.is_fluent_exp():
                     obj_l: List[Tuple[str, Tuple[PyperplanType]]] = []
-                    for o in x.args():
-                        obj_l.append((o.object().name(), (self._convert_type(o.object().type()), )))
-                    p_l.append(Predicate(x.fluent().name(), obj_l))
+                    for o in x.args:
+                        obj_l.append((o.object().name, (self._convert_type(o.object().type), )))
+                    p_l.append(Predicate(x.fluent().name, obj_l))
                 elif x.is_and():
-                    stack.extend(x.args())
+                    stack.extend(x.args)
                 else:
                     raise UPUnsupportedProblemTypeError(f'The problem: {problem.name} has expression: {x} into his goals.\nPyperplan does not support that operand.')
         return p_l
 
     def _convert_initial_values(self, problem: 'up.model.Problem') -> List[Predicate]:
         p_l: List[Predicate] = []
-        for f, v in problem.initial_values().items():
+        for f, v in problem.initial_values.items():
             if not v.is_bool_constant():
                 raise UPUnsupportedProblemTypeError(f"Initial value: {v} of fluent: {f} is not True or False.")
             if v.bool_constant_value():
                 obj_l: List[Tuple[str, PyperplanType]] = []
-                for o in f.args():
-                    obj_l.append((o.object().name(), self._convert_type(o.object().type())))
-                p_l.append(Predicate(f.fluent().name(), obj_l))
+                for o in f.args:
+                    obj_l.append((o.object().name, self._convert_type(o.object().type)))
+                p_l.append(Predicate(f.fluent().name, obj_l))
         return p_l
 
     def _convert_domain(self, problem: 'up.model.Problem') -> Domain:
-        if problem.kind().has_negative_conditions(): # type: ignore
+        if problem.kind.has_negative_conditions(): # type: ignore
             raise UPUnsupportedProblemTypeError(f"Problem: {problem} contains negative preconditions or negative goals. The solver Pyperplan does not support that!")
-        if problem.kind().has_disjunctive_conditions(): # type: ignore
+        if problem.kind.has_disjunctive_conditions(): # type: ignore
             raise UPUnsupportedProblemTypeError(f"Problem: {problem} contains disjunctive preconditions. The solver Pyperplan does not support that!")
-        if problem.kind().has_equality(): # type: ignore
+        if problem.kind.has_equality(): # type: ignore
             raise UPUnsupportedProblemTypeError(f"Problem {problem} contains an equality symbol. The solver Pyperplan does not support that!")
-        if (problem.kind().has_continuous_numbers() or # type: ignore
-            problem.kind().has_discrete_numbers()): # type: ignore
+        if (problem.kind.has_continuous_numbers() or # type: ignore
+            problem.kind.has_discrete_numbers()): # type: ignore
             raise UPUnsupportedProblemTypeError(f"Problem {problem} contains numbers. The solver Pyperplan does not support that!")
-        if problem.kind().has_conditional_effects(): # type: ignore
+        if problem.kind.has_conditional_effects(): # type: ignore
             raise UPUnsupportedProblemTypeError(f"Problem {problem} contains conditional effects. The solver Pyperplan does not support that!")
         self._has_object_type: bool = problem.has_type('object')
         if not self._has_object_type:
             self.pyp_types['object']  = PyperplanType('object', None)
-        self.pyp_types.update({t.name(): self._convert_type(t) for t in problem.user_types()}) # type: ignore
+        self.pyp_types.update({t.name: self._convert_type(t) for t in problem.user_types}) # type: ignore
         pyperplan_types = [self.pyp_types.values()]
         predicates: Dict[str, Predicate] = {}
-        for f in problem.fluents():
+        for f in problem.fluents:
             #predicate_signature
             pred_sign: List[Tuple[str, Tuple[PyperplanType]]] = []
-            for param in f.signature():
-                pred_sign.append((param.name(), (self._convert_type(param.type()), )))
-            predicates[f.name()] = Predicate(f.name(), pred_sign)
-        actions: Dict[str, PyperplanAction] = {a.name: self._convert_action(a, problem.env) for a in problem.actions()}
+            for param in f.signature:
+                pred_sign.append((param.name, (self._convert_type(param.type), )))
+            predicates[f.name] = Predicate(f.name, pred_sign)
+        actions: Dict[str, PyperplanAction] = {a.name: self._convert_action(a, problem.env) for a in problem.actions}
         return Domain(f'domain_{problem.name}', pyperplan_types, predicates,  actions)
 
     def _convert_action(self, action: 'up.model.Action', env) -> PyperplanAction:
         #action_signature
         assert isinstance(action, up.model.InstantaneousAction)
-        act_sign: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(p.name(),
-            (self._convert_type(p.type()), )) for p in action.parameters()]
+        act_sign: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(p.name,
+            (self._convert_type(p.type), )) for p in action.parameters]
         precond: List[Predicate] = []
-        for p in action.preconditions():
+        for p in action.preconditions:
             stack: List[FNode] = [p]
             while stack:
                 x = stack.pop()
                 if x.is_fluent_exp():
                     signature = []
-                    for exp in x.args():
+                    for exp in x.args:
                         if exp.is_parameter_exp():
-                            signature.append((exp.parameter().name(), (self._convert_type(exp.parameter().type()), )))
+                            signature.append((exp.parameter().name, (self._convert_type(exp.parameter().type), )))
                         elif exp.is_object_exp():
-                            signature.append((exp.object().name(), (self._convert_type(exp.object().type()), )))
+                            signature.append((exp.object().name, (self._convert_type(exp.object().type), )))
                         else:
                             raise NotImplementedError
-                    precond.append(Predicate(x.fluent().name(), signature))
+                    precond.append(Predicate(x.fluent().name, signature))
                 elif x.is_and():
-                    stack.extend(x.args())
+                    stack.extend(x.args)
                 else:
                     raise UPUnsupportedProblemTypeError(f'In precondition: {x} of action: {action} is not an AND or a FLUENT')
         effect = Effect()
         add_set: Set[Predicate] = set()
         del_set: Set[Predicate] = set()
-        for e in action.effects():
+        for e in action.effects:
             params: List[Tuple[str, Tuple[PyperplanType, ...]]] = []
-            for p in e.fluent().args():
+            for p in e.fluent.args:
                 if p.is_parameter_exp():
-                    params.append((p.parameter().name(),
-                                (self._convert_type(p.parameter().type()), )))
+                    params.append((p.parameter().name,
+                                (self._convert_type(p.parameter().type), )))
                 elif p.is_object_exp():
-                    params.append((p.object().name(),
-                                (self._convert_type(p.object().type()), )))
+                    params.append((p.object().name,
+                                (self._convert_type(p.object().type), )))
                 else:
                     raise NotImplementedError
             assert not e.is_conditional()
-            if e.value().bool_constant_value():
-                add_set.add(Predicate(e.fluent().fluent().name(), params))
+            if e.value.bool_constant_value():
+                add_set.add(Predicate(e.fluent.fluent().name, params))
             else:
-                del_set.add(Predicate(e.fluent().fluent().name(), params))
+                del_set.add(Predicate(e.fluent.fluent().name, params))
         effect.addlist = add_set
         effect.dellist = del_set
         return PyperplanAction(action.name, act_sign, precond, effect)
 
     def _convert_type(self, type: UPType) -> PyperplanType:
         assert type.is_user_type()
-        t = self.pyp_types.get(type.name(), None) # type: ignore
+        t = self.pyp_types.get(type.name, None) # type: ignore
         father: Optional[PyperplanType] = None
         if t is not None: # type already defined
             return t
-        elif type.father() is not None: # type's father is clear
-            father = self._convert_type(type.father())
+        elif type.father is not None: # type's father is clear
+            father = self._convert_type(type.father)
         elif not self._has_object_type: # type father is None and object type is not used, so it's father is pyperplan is 'object'
             father = self.pyp_types['object']
         #else:          # type father is None and object type is used in the problem, so his father also in pyperplan
         #   pass        # must be None; which already is.
-        new_t = PyperplanType(type.name(), father) # type: ignore
-        self.pyp_types[type.name()] = new_t # type: ignore
+        new_t = PyperplanType(type.name, father) # type: ignore
+        self.pyp_types[type.name] = new_t # type: ignore
         return new_t
 
     @staticmethod

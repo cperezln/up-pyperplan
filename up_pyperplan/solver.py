@@ -19,6 +19,7 @@ import warnings
 import unified_planning as up
 import unified_planning.solvers
 from unified_planning.exceptions import UPUnsupportedProblemTypeError
+from unified_planning.solvers import PlanGenerationResultStatus
 from unified_planning.model import FNode, ProblemKind, Type as UPType
 from up_pyperplan.grounder import rewrite_back_task
 
@@ -71,10 +72,10 @@ class SolverImpl(unified_planning.solvers.Solver):
         solution = _search(task, search, heuristic)
         actions: List[up.plan.ActionInstance] = []
         if solution is None:
-            return up.plan.FinalReport(up.solvers.results.UNSOLVABLE_PROVEN, None, self.name)
+            return up.plan.FinalReport(PlanGenerationResultStatus.UNSOLVABLE_PROVEN, None, self.name)
         for action_string in solution:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
-        return up.solvers.PlanGenerationResult(up.solvers.results.SOLVED_SATISFICING, up.plan.SequentialPlan(actions), self.name)
+        return up.solvers.PlanGenerationResult(PlanGenerationResultStatus.SOLVED_SATISFICING, up.plan.SequentialPlan(actions), self.name)
 
     def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plan.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"

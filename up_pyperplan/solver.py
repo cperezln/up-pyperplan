@@ -19,7 +19,7 @@ import warnings
 import unified_planning as up
 import unified_planning.solvers
 from unified_planning.exceptions import UPUnsupportedProblemTypeError
-from unified_planning.solvers import PlanGenerationResultStatus
+from unified_planning.solvers import PlanGenerationResultStatus, GroundingResult
 from unified_planning.model import FNode, ProblemKind, Type as UPType
 from up_pyperplan.grounder import rewrite_back_task
 
@@ -41,13 +41,13 @@ class SolverImpl(unified_planning.solvers.Solver):
     def name(self) -> str:
         return "Pyperplan"
 
-    def ground(self, problem: 'up.model.Problem') -> Tuple['up.model.Problem', Callable[['up.plan.Plan'], 'up.plan.Plan']]:
+    def ground(self, problem: 'up.model.Problem') -> GroundingResult:
         self.pyp_types: Dict[str, PyperplanType] = {}
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)
         task = _ground(prob)
         grounded_problem, rewrite_back_map = rewrite_back_task(task, problem)
-        return (grounded_problem, partial(up.solvers.grounder.lift_plan, map=rewrite_back_map))
+        return GroundingResult(grounded_problem, partial(up.solvers.grounder.lift_plan, map=rewrite_back_map))
 
     def solve(self, problem: 'up.model.Problem',
                 callback: Optional[Callable[['up.solvers.PlanGenerationResult'], None]] = None,

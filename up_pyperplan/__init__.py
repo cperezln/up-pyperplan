@@ -15,7 +15,7 @@
 import subprocess
 import re
 
-from .solver import SolverImpl
+#from .solver import SolverImpl
 
 
 VERSION = (0, 0, 1)

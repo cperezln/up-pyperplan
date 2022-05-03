@@ -20,6 +20,7 @@ setup(name='up_pyperplan',
       author_email='aiplan4eu@fbk.eu',
       url='https://www.aiplan4eu-project.eu',
       packages=['up_pyperplan'],
+      python_requires='>=3.7',
       install_requires=['pyperplan'],
       license='APACHE'
      )

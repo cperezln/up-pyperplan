@@ -47,7 +47,7 @@ class SolverImpl(unified_planning.solvers.Solver):
         prob = self._convert_problem(dom, problem)
         task = _ground(prob)
         grounded_problem, rewrite_back_map = rewrite_back_task(task, problem)
-        return GroundingResult(grounded_problem, partial(up.solvers.grounder.lift_action_instance, map=rewrite_back_map))
+        return GroundingResult(grounded_problem, partial(up.solvers.grounder.lift_action_instance, map=rewrite_back_map), self.name, [])
 
     def solve(self, problem: 'up.model.Problem',
                 callback: Optional[Callable[['up.solvers.PlanGenerationResult'], None]] = None,

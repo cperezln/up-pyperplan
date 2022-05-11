@@ -14,12 +14,13 @@
 
 
 from functools import partial
+import sys
 from typing import IO, Callable, List, Dict, Optional, Set, Tuple
 import warnings
 import unified_planning as up
 import unified_planning.solvers
 from unified_planning.exceptions import UPUnsupportedProblemTypeError
-from unified_planning.solvers import PlanGenerationResultStatus, GroundingResult
+from unified_planning.solvers import PlanGenerationResultStatus, GroundingResult, Credits
 from unified_planning.model import FNode, ProblemKind, Type as UPType
 from up_pyperplan.grounder import rewrite_back_task
 
@@ -31,6 +32,11 @@ from pyperplan.pddl.pddl import Predicate, Effect, Domain # type: ignore
 
 from pyperplan.planner import _ground, _search, SEARCHES, HEURISTICS # type: ignore
 
+credits = Credits('Artificial Intelligence Group - University of Basel',
+                  '',
+                  'https://github.com/aibasel/pyperplan',
+                  'pyperplan solver and grounder, for more information check the given website'
+                )
 
 class SolverImpl(unified_planning.solvers.Solver):
     def __init__(self, **options):
@@ -228,6 +234,13 @@ class SolverImpl(unified_planning.solvers.Solver):
     @staticmethod
     def is_grounder():
         return True
+
+    @staticmethod
+    def credits(stream: Optional[IO[str]] = sys.stdout, full_credits: bool = False):
+        if stream is not None:
+            stream.write(f'CREDITS\n')
+            credits.write_credits(stream, full_credits)
+            stream.write('END OF CREDITS\n\n')
 
     def destroy(self):
         pass

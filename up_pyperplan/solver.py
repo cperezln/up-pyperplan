@@ -32,9 +32,11 @@ from pyperplan.pddl.pddl import Predicate, Effect, Domain # type: ignore
 
 from pyperplan.planner import _ground, _search, SEARCHES, HEURISTICS # type: ignore
 
-credits = Credits('Artificial Intelligence Group - University of Basel',
+credits = Credits('pyperplan solver & grounder',
+                  'Artificial Intelligence Group - University of Basel',
                   '',
                   'https://github.com/aibasel/pyperplan',
+                  'pyperplan solver and grounder, for more information check the given website',
                   'pyperplan solver and grounder, for more information check the given website'
                 )
 
@@ -218,14 +220,17 @@ class SolverImpl(unified_planning.solvers.Solver):
         new_t = PyperplanType(type.name, father) # type: ignore
         self.pyp_types[type.name] = new_t # type: ignore
         return new_t
-
     @staticmethod
-    def supports(problem_kind):
+    def supported_kind() -> ProblemKind:
         supported_kind = ProblemKind()
         supported_kind.set_problem_class('ACTION_BASED')
         supported_kind.set_typing('FLAT_TYPING')
         supported_kind.set_typing('HIERARCHICAL_TYPING')
-        return problem_kind <= supported_kind
+        return supported_kind
+
+    @staticmethod
+    def supports(problem_kind: 'up.model.ProblemKind') -> bool:
+        return problem_kind <= SolverImpl.supported_kind()
 
     @staticmethod
     def is_oneshot_planner():
@@ -238,9 +243,7 @@ class SolverImpl(unified_planning.solvers.Solver):
     @staticmethod
     def credits(stream: Optional[IO[str]] = sys.stdout, full_credits: bool = False):
         if stream is not None:
-            stream.write('CREDITS\n')
             credits.write_credits(stream, full_credits)
-            stream.write('END OF CREDITS\n\n')
 
     def destroy(self):
         pass

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from setuptools import setup # type: ignore
+import up_pyperplan
 
 
 long_description=\
@@ -13,12 +14,13 @@ long_description=\
 """
 
 setup(name='up_pyperplan',
-      version='0.0.1',
+      version=up_pyperplan.__version__,
       description='up_pyperplan',
       author='AIPlan4EU Organization',
       author_email='aiplan4eu@fbk.eu',
       url='https://www.aiplan4eu-project.eu',
       packages=['up_pyperplan'],
-      install_requires=['pyperplan'],
+      python_requires='>=3.7',
+      install_requires=['pyperplan==2.1'],
       license='APACHE'
      )

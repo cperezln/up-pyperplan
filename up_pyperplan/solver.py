@@ -213,6 +213,7 @@ class SolverImpl(unified_planning.solvers.Solver):
     @staticmethod
     def supports(problem_kind):
         supported_kind = ProblemKind()
+        supported_kind.set_problem_class('ACTION_BASED')
         supported_kind.set_typing('FLAT_TYPING')
         supported_kind.set_typing('HIERARCHICAL_TYPING')
         return problem_kind <= supported_kind

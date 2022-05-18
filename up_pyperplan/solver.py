@@ -14,7 +14,6 @@
 
 
 from functools import partial
-import sys
 from typing import IO, Callable, List, Dict, Optional, Set, Tuple
 import warnings
 import unified_planning as up
@@ -32,12 +31,13 @@ from pyperplan.pddl.pddl import Predicate, Effect, Domain # type: ignore
 
 from pyperplan.planner import _ground, _search, SEARCHES, HEURISTICS # type: ignore
 
-credits = Credits('pyperplan solver & grounder',
+credits = Credits('pyperplan',
                   'Artificial Intelligence Group - University of Basel',
-                  '',
+                  'Yusra Alkhazraji and Matthias Frorath and Markus Grützner and Malte Helmert and Thomas Liebetraut and Robert Mattmüller and Manuela Ortlieb and Jendrik Seipp and Tobias Springenberg and Philip Stahl and Jan Wülfing',
                   'https://github.com/aibasel/pyperplan',
-                  'pyperplan solver and grounder, for more information check the given website',
-                  'pyperplan solver and grounder, for more information check the given website'
+                  'GNU GENERAL PUBLIC LICENSE, Version 3',
+                  'Pyperplan is a lightweight STRIPS planner written in Python.',
+                  'Pyperplan is a lightweight STRIPS planner written in Python.\nPlease note that Pyperplan deliberately prefers clean code over fast code. It is designed to be used as a teaching or prototyping tool. If you use it for paper experiments, please state clearly that Pyperplan does not offer state-of-the-art performance.\nIt was developed during the planning practical course at Albert-Ludwigs-Universität Freiburg during the winter term 2010/2011 and is published under the terms of the GNU General Public License 3 (GPLv3).\nPyperplan supports the following PDDL fragment: STRIPS without action costs.'
                 )
 
 class SolverImpl(unified_planning.solvers.Solver):
@@ -240,10 +240,9 @@ class SolverImpl(unified_planning.solvers.Solver):
     def is_grounder():
         return True
 
-    @staticmethod
-    def credits(stream: Optional[IO[str]] = sys.stdout, full_credits: bool = False):
-        if stream is not None:
-            credits.write_credits(stream, full_credits)
+    @unified_planning.solvers.solver.staticproperty
+    def credits() -> Optional[unified_planning.solvers.Credits]: # type: ignore
+        return credits
 
     def destroy(self):
         pass

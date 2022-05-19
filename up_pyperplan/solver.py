@@ -70,20 +70,20 @@ class SolverImpl(unified_planning.solvers.Solver):
         # if not heuristic_class is None:
         #     heuristic = heuristic_class(task)
         solution = _search(task, search, heuristic)
-        actions: List[up.plan.ActionInstance] = []
+        actions: List[up.plans.ActionInstance] = []
         if solution is None:
-            return up.plan.FinalReport(PlanGenerationResultStatus.UNSOLVABLE_PROVEN, None, self.name)
+            return up.plans.FinalReport(PlanGenerationResultStatus.UNSOLVABLE_PROVEN, None, self.name)
         for action_string in solution:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
-        return up.solvers.PlanGenerationResult(PlanGenerationResultStatus.SOLVED_SATISFICING, up.plan.SequentialPlan(actions), self.name)
+        return up.solvers.PlanGenerationResult(PlanGenerationResultStatus.SOLVED_SATISFICING, up.plans.SequentialPlan(actions), self.name)
 
-    def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plan.ActionInstance':
+    def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plans.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"
         list_str = string[1:-1].split(" ")
         action = problem.action(list_str[0])
         expr_manager = problem.env.expression_manager
         param = tuple(expr_manager.ObjectExp(problem.object(o_name)) for o_name in list_str[1:])
-        return up.plan.ActionInstance(action, param)
+        return up.plans.ActionInstance(action, param)
 
     def _convert_problem(self, domain: Domain, problem: 'unified_planning.model.Problem') -> PyperplanProblem:
         objects: Dict[str, PyperplanType] = {o.name: self._convert_type(o.type) for o in problem.all_objects}

@@ -240,8 +240,8 @@ class SolverImpl(unified_planning.solvers.Solver):
     def is_grounder():
         return True
 
-    @unified_planning.solvers.solver.staticproperty
-    def credits() -> Optional[unified_planning.solvers.Credits]: # type: ignore
+    @staticmethod
+    def get_credits(**kwargs) -> Optional[unified_planning.solvers.Credits]: # type: ignore
         return credits
 
     def destroy(self):

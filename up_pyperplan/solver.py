@@ -241,7 +241,7 @@ class SolverImpl(unified_planning.solvers.Solver):
         return True
 
     @staticmethod
-    def get_credits(**kwargs) -> Optional[unified_planning.solvers.Credits]: # type: ignore
+    def get_credits(**kwargs) -> Optional[unified_planning.solvers.Credits]:
         return credits
 
     def destroy(self):

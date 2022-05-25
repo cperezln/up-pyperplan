@@ -42,6 +42,8 @@ class SolverImpl(unified_planning.solvers.Solver):
         return "Pyperplan"
 
     def ground(self, problem: 'up.model.Problem') -> GroundingResult:
+        if not self.supports(problem.kind):
+            raise UPUnsupportedProblemTypeError('Pyperplan cannot ground this kind of problem!')
         self.pyp_types: Dict[str, PyperplanType] = {}
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)
@@ -56,7 +58,8 @@ class SolverImpl(unified_planning.solvers.Solver):
         '''This function returns the PlanGenerationResult for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
-        assert self.supports(problem.kind)
+        if not self.supports(problem.kind):
+            raise UPUnsupportedProblemTypeError('Pyperplan cannot solve this kind of problem!')
         if timeout is not None:
             warnings.warn('Pyperplan does not support timeout.', UserWarning)
         if output_stream is not None:

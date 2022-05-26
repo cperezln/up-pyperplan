@@ -19,7 +19,7 @@ import warnings
 import unified_planning as up
 import unified_planning.solvers
 from unified_planning.exceptions import UPUnsupportedProblemTypeError
-from unified_planning.solvers import PlanGenerationResultStatus, GroundingResult
+from unified_planning.solvers import PlanGenerationResultStatus, GroundingResult, Credits
 from unified_planning.model import FNode, ProblemKind, Type as UPType
 from up_pyperplan.grounder import rewrite_back_task
 
@@ -31,6 +31,14 @@ from pyperplan.pddl.pddl import Predicate, Effect, Domain # type: ignore
 
 from pyperplan.planner import _ground, _search, SEARCHES, HEURISTICS # type: ignore
 
+credits = Credits('pyperplan',
+                  'Artificial Intelligence Group - University of Basel',
+                  'Yusra Alkhazraji and Matthias Frorath and Markus Grützner and Malte Helmert and Thomas Liebetraut and Robert Mattmüller and Manuela Ortlieb and Jendrik Seipp and Tobias Springenberg and Philip Stahl and Jan Wülfing',
+                  'https://github.com/aibasel/pyperplan',
+                  'GNU GENERAL PUBLIC LICENSE, Version 3',
+                  'Pyperplan is a lightweight STRIPS planner written in Python.',
+                  'Pyperplan is a lightweight STRIPS planner written in Python.\nPlease note that Pyperplan deliberately prefers clean code over fast code. It is designed to be used as a teaching or prototyping tool. If you use it for paper experiments, please state clearly that Pyperplan does not offer state-of-the-art performance.\nIt was developed during the planning practical course at Albert-Ludwigs-Universität Freiburg during the winter term 2010/2011 and is published under the terms of the GNU General Public License 3 (GPLv3).\nPyperplan supports the following PDDL fragment: STRIPS without action costs.'
+                )
 
 class SolverImpl(unified_planning.solvers.Solver):
     def __init__(self, **options):
@@ -212,14 +220,17 @@ class SolverImpl(unified_planning.solvers.Solver):
         new_t = PyperplanType(type.name, father) # type: ignore
         self.pyp_types[type.name] = new_t # type: ignore
         return new_t
-
     @staticmethod
-    def supports(problem_kind):
+    def supported_kind() -> ProblemKind:
         supported_kind = ProblemKind()
         supported_kind.set_problem_class('ACTION_BASED')
         supported_kind.set_typing('FLAT_TYPING')
         supported_kind.set_typing('HIERARCHICAL_TYPING')
-        return problem_kind <= supported_kind
+        return supported_kind
+
+    @staticmethod
+    def supports(problem_kind: 'up.model.ProblemKind') -> bool:
+        return problem_kind <= SolverImpl.supported_kind()
 
     @staticmethod
     def is_oneshot_planner():
@@ -228,6 +239,10 @@ class SolverImpl(unified_planning.solvers.Solver):
     @staticmethod
     def is_grounder():
         return True
+
+    @staticmethod
+    def get_credits(**kwargs) -> Optional[unified_planning.solvers.Credits]:
+        return credits
 
     def destroy(self):
         pass

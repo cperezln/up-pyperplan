@@ -86,7 +86,7 @@ class SolverImpl(unified_planning.solvers.Solver):
             return up.plans.FinalReport(PlanGenerationResultStatus.UNSOLVABLE_PROVEN, None, self.name)
         for action_string in solution:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
-        return up.solvers.PlanGenerationResult(PlanGenerationResultStatus.SOLVED_SATISFICING, up.plans.SequentialPlan(actions), self.name)
+        return up.solvers.PlanGenerationResult(PlanGenerationResultStatus.SOLVED_SATISFICING, up.plans.SequentialPlan(actions, problem.env), self.name)
 
     def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plans.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"

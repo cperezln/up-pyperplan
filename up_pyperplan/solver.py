@@ -65,7 +65,7 @@ class SolverImpl(unified_planning.engines.mixins.OneshotPlannerMixin,
     def supports(problem_kind: 'up.model.ProblemKind') -> bool:
         return problem_kind <= SolverImpl.supported_kind()
 
-    def supports_compilation(self, compilation_kind: CompilationKind) -> bool:
+    def supports_compilation(compilation_kind: CompilationKind) -> bool:
         return compilation_kind == CompilationKind.GROUNDER
 
     @staticmethod

@@ -14,12 +14,14 @@
 
 
 from functools import partial
-from typing import IO, Callable, List, Dict, Optional, Set, Tuple
+from typing import IO, Callable, List, Dict, Optional, Set, Tuple, Union
 import warnings
 import unified_planning as up
-import unified_planning.solvers
-from unified_planning.exceptions import UPUnsupportedProblemTypeError
-from unified_planning.solvers import PlanGenerationResultStatus, GroundingResult, Credits
+import unified_planning.engines
+import unified_planning.engines.mixins
+from unified_planning.exceptions import UPUnsupportedProblemTypeError, UPUsageError
+from unified_planning.engines import PlanGenerationResultStatus, CompilerResult, Credits
+from unified_planning.engines.mixins.compiler import CompilationKind
 from unified_planning.model import FNode, ProblemKind, Type as UPType
 from up_pyperplan.grounder import rewrite_back_task
 
@@ -40,7 +42,9 @@ credits = Credits('pyperplan',
                   'Pyperplan is a lightweight STRIPS planner written in Python.\nPlease note that Pyperplan deliberately prefers clean code over fast code. It is designed to be used as a teaching or prototyping tool. If you use it for paper experiments, please state clearly that Pyperplan does not offer state-of-the-art performance.\nIt was developed during the planning practical course at Albert-Ludwigs-Universität Freiburg during the winter term 2010/2011 and is published under the terms of the GNU General Public License 3 (GPLv3).\nPyperplan supports the following PDDL fragment: STRIPS without action costs.'
                 )
 
-class SolverImpl(unified_planning.solvers.Solver):
+class SolverImpl(unified_planning.engines.mixins.OneshotPlannerMixin,
+                 unified_planning.engines.mixins.CompilerMixin,
+                 unified_planning.engines.Engine):
     def __init__(self, **options):
         if len(options) > 0:
             raise
@@ -49,20 +53,46 @@ class SolverImpl(unified_planning.solvers.Solver):
     def name(self) -> str:
         return "Pyperplan"
 
-    def ground(self, problem: 'up.model.Problem') -> GroundingResult:
+    @staticmethod
+    def supported_kind() -> ProblemKind:
+        supported_kind = ProblemKind()
+        supported_kind.set_problem_class('ACTION_BASED')
+        supported_kind.set_typing('FLAT_TYPING')
+        supported_kind.set_typing('HIERARCHICAL_TYPING')
+        return supported_kind
+
+    @staticmethod
+    def supports(problem_kind: 'up.model.ProblemKind') -> bool:
+        return problem_kind <= SolverImpl.supported_kind()
+
+    def supports_compilation(self, compilation_kind: CompilationKind) -> bool:
+        return compilation_kind == CompilationKind.GROUNDER
+
+    @staticmethod
+    def satisfies(optimality_guarantee: Union[up.engines.OptimalityGuarantee, str]) -> bool:
+        return False
+
+    @staticmethod
+    def get_credits(**kwargs) -> Optional[unified_planning.engines.Credits]:
+        return credits
+
+    def compile(self, problem: 'up.model.AbstractProblem',
+                compilation_kind: 'up.engines.CompilationKind') -> CompilerResult:
         if not self.supports(problem.kind):
             raise UPUnsupportedProblemTypeError('Pyperplan cannot ground this kind of problem!')
+        if not self.supports_compilation(compilation_kind):
+            raise UPUsageError('Pyperplan does not handle this kind of compilation!')
         self.pyp_types: Dict[str, PyperplanType] = {}
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)
         task = _ground(prob)
         grounded_problem, rewrite_back_map = rewrite_back_task(task, problem)
-        return GroundingResult(grounded_problem, partial(up.solvers.grounder.lift_action_instance, map=rewrite_back_map), self.name, [])
+        return CompilerResult(grounded_problem, partial(up.engines.compilers.utils.lift_action_instance, map=rewrite_back_map), self.name, [])
 
     def solve(self, problem: 'up.model.Problem',
-                callback: Optional[Callable[['up.solvers.PlanGenerationResult'], None]] = None,
-                timeout: Optional[float] = None,
-                output_stream: Optional[IO[str]] = None) -> 'up.solvers.results.PlanGenerationResult':
+              callback: Optional[Callable[['up.engines.PlanGenerationResult'], None]] = None,
+              timeout: Optional[float] = None,
+              output_stream: Optional[IO[str]] = None) -> 'up.engines.results.PlanGenerationResult':
         '''This function returns the PlanGenerationResult for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
@@ -83,10 +113,10 @@ class SolverImpl(unified_planning.solvers.Solver):
         solution = _search(task, search, heuristic)
         actions: List[up.plans.ActionInstance] = []
         if solution is None:
-            return up.plans.FinalReport(PlanGenerationResultStatus.UNSOLVABLE_PROVEN, None, self.name)
+            return up.engines.PlanGenerationResult(PlanGenerationResultStatus.UNSOLVABLE_PROVEN, None, self.name)
         for action_string in solution:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
-        return up.solvers.PlanGenerationResult(PlanGenerationResultStatus.SOLVED_SATISFICING, up.plans.SequentialPlan(actions, problem.env), self.name)
+        return up.engines.PlanGenerationResult(PlanGenerationResultStatus.SOLVED_SATISFICING, up.plans.SequentialPlan(actions), self.name)
 
     def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plans.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"
@@ -132,17 +162,6 @@ class SolverImpl(unified_planning.solvers.Solver):
         return p_l
 
     def _convert_domain(self, problem: 'up.model.Problem') -> Domain:
-        if problem.kind.has_negative_conditions(): # type: ignore
-            raise UPUnsupportedProblemTypeError(f"Problem: {problem} contains negative preconditions or negative goals. The solver Pyperplan does not support that!")
-        if problem.kind.has_disjunctive_conditions(): # type: ignore
-            raise UPUnsupportedProblemTypeError(f"Problem: {problem} contains disjunctive preconditions. The solver Pyperplan does not support that!")
-        if problem.kind.has_equality(): # type: ignore
-            raise UPUnsupportedProblemTypeError(f"Problem {problem} contains an equality symbol. The solver Pyperplan does not support that!")
-        if (problem.kind.has_continuous_numbers() or # type: ignore
-            problem.kind.has_discrete_numbers()): # type: ignore
-            raise UPUnsupportedProblemTypeError(f"Problem {problem} contains numbers. The solver Pyperplan does not support that!")
-        if problem.kind.has_conditional_effects(): # type: ignore
-            raise UPUnsupportedProblemTypeError(f"Problem {problem} contains conditional effects. The solver Pyperplan does not support that!")
         self._has_object_type: bool = problem.has_type('object')
         if not self._has_object_type:
             self.pyp_types['object']  = PyperplanType('object', None)
@@ -220,29 +239,3 @@ class SolverImpl(unified_planning.solvers.Solver):
         new_t = PyperplanType(type.name, father) # type: ignore
         self.pyp_types[type.name] = new_t # type: ignore
         return new_t
-    @staticmethod
-    def supported_kind() -> ProblemKind:
-        supported_kind = ProblemKind()
-        supported_kind.set_problem_class('ACTION_BASED')
-        supported_kind.set_typing('FLAT_TYPING')
-        supported_kind.set_typing('HIERARCHICAL_TYPING')
-        return supported_kind
-
-    @staticmethod
-    def supports(problem_kind: 'up.model.ProblemKind') -> bool:
-        return problem_kind <= SolverImpl.supported_kind()
-
-    @staticmethod
-    def is_oneshot_planner():
-        return True
-
-    @staticmethod
-    def is_grounder():
-        return True
-
-    @staticmethod
-    def get_credits(**kwargs) -> Optional[unified_planning.solvers.Credits]:
-        return credits
-
-    def destroy(self):
-        pass

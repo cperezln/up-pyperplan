@@ -42,9 +42,9 @@ credits = Credits('pyperplan',
                   'Pyperplan is a lightweight STRIPS planner written in Python.\nPlease note that Pyperplan deliberately prefers clean code over fast code. It is designed to be used as a teaching or prototyping tool. If you use it for paper experiments, please state clearly that Pyperplan does not offer state-of-the-art performance.\nIt was developed during the planning practical course at Albert-Ludwigs-Universität Freiburg during the winter term 2010/2011 and is published under the terms of the GNU General Public License 3 (GPLv3).\nPyperplan supports the following PDDL fragment: STRIPS without action costs.'
                 )
 
-class SolverImpl(unified_planning.engines.mixins.OneshotPlannerMixin,
-                 unified_planning.engines.mixins.CompilerMixin,
-                 unified_planning.engines.Engine):
+class EngineImpl(unified_planning.engines.Engine,
+                 unified_planning.engines.mixins.OneshotPlannerMixin,
+                 unified_planning.engines.mixins.CompilerMixin):
     def __init__(self, **options):
         if len(options) > 0:
             raise
@@ -63,7 +63,7 @@ class SolverImpl(unified_planning.engines.mixins.OneshotPlannerMixin,
 
     @staticmethod
     def supports(problem_kind: 'up.model.ProblemKind') -> bool:
-        return problem_kind <= SolverImpl.supported_kind()
+        return problem_kind <= EngineImpl.supported_kind()
 
     @staticmethod
     def supports_compilation(compilation_kind: CompilationKind) -> bool:

@@ -14,11 +14,12 @@
 
 
 from functools import partial
-from typing import IO, Callable, List, Dict, Optional, Set, Tuple, Union
+from typing import IO, Callable, List, Dict, Optional, Set, Tuple, Union, cast
 import warnings
 import unified_planning as up
 import unified_planning.engines
 import unified_planning.engines.mixins
+import unified_planning.engines.compilers
 from unified_planning.exceptions import UPUnsupportedProblemTypeError, UPUsageError
 from unified_planning.engines import PlanGenerationResultStatus, CompilerResult, Credits
 from unified_planning.engines.mixins.compiler import CompilationKind
@@ -56,9 +57,9 @@ class EngineImpl(unified_planning.engines.Engine,
     @staticmethod
     def supported_kind() -> ProblemKind:
         supported_kind = ProblemKind()
-        supported_kind.set_problem_class('ACTION_BASED')
-        supported_kind.set_typing('FLAT_TYPING')
-        supported_kind.set_typing('HIERARCHICAL_TYPING')
+        supported_kind.set_problem_class('ACTION_BASED') # type: ignore
+        supported_kind.set_typing('FLAT_TYPING') # type: ignore
+        supported_kind.set_typing('HIERARCHICAL_TYPING') # type: ignore
         return supported_kind
 
     @staticmethod
@@ -70,7 +71,7 @@ class EngineImpl(unified_planning.engines.Engine,
         return compilation_kind == CompilationKind.GROUNDER
 
     @staticmethod
-    def satisfies(optimality_guarantee: Union[up.engines.OptimalityGuarantee, str]) -> bool:
+    def satisfies(optimality_guarantee: up.engines.OptimalityGuarantee) -> bool:
         return False
 
     @staticmethod
@@ -81,6 +82,7 @@ class EngineImpl(unified_planning.engines.Engine,
                 compilation_kind: 'up.engines.CompilationKind') -> CompilerResult:
         if not self.supports(problem.kind):
             raise UPUnsupportedProblemTypeError('Pyperplan cannot ground this kind of problem!')
+        assert isinstance(problem, up.model.Problem)
         if not self.supports_compilation(compilation_kind):
             raise UPUsageError('Pyperplan does not handle this kind of compilation!')
         self.pyp_types: Dict[str, PyperplanType] = {}
@@ -90,7 +92,7 @@ class EngineImpl(unified_planning.engines.Engine,
         grounded_problem, rewrite_back_map = rewrite_back_task(task, problem)
         return CompilerResult(grounded_problem, partial(up.engines.compilers.utils.lift_action_instance, map=rewrite_back_map), self.name, [])
 
-    def solve(self, problem: 'up.model.Problem',
+    def solve(self, problem: 'up.model.AbstractProblem',
               callback: Optional[Callable[['up.engines.PlanGenerationResult'], None]] = None,
               timeout: Optional[float] = None,
               output_stream: Optional[IO[str]] = None) -> 'up.engines.results.PlanGenerationResult':
@@ -99,11 +101,12 @@ class EngineImpl(unified_planning.engines.Engine,
         is supported.'''
         if not self.supports(problem.kind):
             raise UPUnsupportedProblemTypeError('Pyperplan cannot solve this kind of problem!')
+        assert isinstance(problem, up.model.Problem)
         if timeout is not None:
             warnings.warn('Pyperplan does not support timeout.', UserWarning)
         if output_stream is not None:
             warnings.warn('Pyperplan does not support output stream.', UserWarning)
-        self.pyp_types: Dict[str, PyperplanType] = {} # type: ignore
+        self.pyp_types = {}
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)
         search = SEARCHES["bfs"]
@@ -165,8 +168,8 @@ class EngineImpl(unified_planning.engines.Engine,
     def _convert_domain(self, problem: 'up.model.Problem') -> Domain:
         self._has_object_type: bool = problem.has_type('object')
         if not self._has_object_type:
-            self.pyp_types['object']  = PyperplanType('object', None)
-        self.pyp_types.update({t.name: self._convert_type(t) for t in problem.user_types}) # type: ignore
+            self.pyp_types['object'] = PyperplanType('object', None)
+        self.pyp_types.update({cast(up.model.types._UserType, t).name: self._convert_type(t) for t in problem.user_types})
         pyperplan_types = [self.pyp_types.values()]
         predicates: Dict[str, Predicate] = {}
         for f in problem.fluents:
@@ -227,7 +230,8 @@ class EngineImpl(unified_planning.engines.Engine,
 
     def _convert_type(self, type: UPType) -> PyperplanType:
         assert type.is_user_type()
-        t = self.pyp_types.get(type.name, None) # type: ignore
+        type = cast(up.model.types._UserType, type)
+        t = self.pyp_types.get(type.name, None)
         father: Optional[PyperplanType] = None
         if t is not None: # type already defined
             return t
@@ -237,6 +241,6 @@ class EngineImpl(unified_planning.engines.Engine,
             father = self.pyp_types['object']
         #else:          # type father is None and object type is used in the problem, so his father also in pyperplan
         #   pass        # must be None; which already is.
-        new_t = PyperplanType(type.name, father) # type: ignore
-        self.pyp_types[type.name] = new_t # type: ignore
+        new_t = PyperplanType(type.name, father)
+        self.pyp_types[type.name] = new_t
         return new_t

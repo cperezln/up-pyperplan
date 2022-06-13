@@ -68,7 +68,7 @@ class EngineImpl(unified_planning.engines.Engine,
 
     @staticmethod
     def supports_compilation(compilation_kind: CompilationKind) -> bool:
-        return compilation_kind == CompilationKind.GROUNDER
+        return compilation_kind == CompilationKind.GROUNDING
 
     @staticmethod
     def satisfies(optimality_guarantee: up.engines.OptimalityGuarantee) -> bool:

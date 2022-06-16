@@ -78,13 +78,9 @@ class EngineImpl(unified_planning.engines.Engine,
     def get_credits(**kwargs) -> Optional[unified_planning.engines.Credits]:
         return credits
 
-    def compile(self, problem: 'up.model.AbstractProblem',
-                compilation_kind: 'up.engines.CompilationKind') -> CompilerResult:
-        if not self.supports(problem.kind):
-            raise UPUnsupportedProblemTypeError('Pyperplan cannot ground this kind of problem!')
+    def _compile(self, problem: 'up.model.AbstractProblem',
+                 compilation_kind: 'up.engines.CompilationKind') -> CompilerResult:
         assert isinstance(problem, up.model.Problem)
-        if not self.supports_compilation(compilation_kind):
-            raise UPUsageError('Pyperplan does not handle this kind of compilation!')
         self.pyp_types: Dict[str, PyperplanType] = {}
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)
@@ -92,15 +88,13 @@ class EngineImpl(unified_planning.engines.Engine,
         grounded_problem, rewrite_back_map = rewrite_back_task(task, problem)
         return CompilerResult(grounded_problem, partial(up.engines.compilers.utils.lift_action_instance, map=rewrite_back_map), self.name, [])
 
-    def solve(self, problem: 'up.model.AbstractProblem',
-              callback: Optional[Callable[['up.engines.PlanGenerationResult'], None]] = None,
-              timeout: Optional[float] = None,
-              output_stream: Optional[IO[str]] = None) -> 'up.engines.results.PlanGenerationResult':
+    def _solve(self, problem: 'up.model.AbstractProblem',
+               callback: Optional[Callable[['up.engines.PlanGenerationResult'], None]] = None,
+               timeout: Optional[float] = None,
+               output_stream: Optional[IO[str]] = None) -> 'up.engines.results.PlanGenerationResult':
         '''This function returns the PlanGenerationResult for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
-        if not self.supports(problem.kind):
-            raise UPUnsupportedProblemTypeError('Pyperplan cannot solve this kind of problem!')
         assert isinstance(problem, up.model.Problem)
         if timeout is not None:
             warnings.warn('Pyperplan does not support timeout.', UserWarning)

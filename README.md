@@ -5,8 +5,8 @@ This is the integrator for the [pyperplan](https://github.com/aibasel/pyperplan)
 You can install this engine as an extra requirement of the `unified-planning` package: `pip install unified-planning[pyperplan]`.
 The installation has been tested on the latest versions of ubuntu, windows and macos.
 
-**Default configuration:** BFS search
+**Default configuration:** BFS search.
 
-**Planning approaches of UP supported:**  classical planning
+**Planning approaches of UP supported:** classical planning.
 
-**Operative modes of UP currently supported:** one-shot planning, Grounding compilation.
+**Operative modes of UP currently supported:** oneshot planning, grounding compilation.

@@ -43,15 +43,19 @@ def rewrite_back_task(task: 'pyperplan.task.Task', original_problem: 'up.model.P
     #parse facts etc, init and goals. All are set of strings, so we need a way to parse fluents from objects.
     #facts are all the fluents applied to all the objects, in lisp notation, therefore a fluent "at" that takes a robot
     # and a location, with r1, r2, l1, l2 is represented as 4 facts called "(at r1 l1) (at r1 l2) (at r2 l1) (at r2 l2)"
-    # those 4 facts will be our fluents after we remove "()" and change blank spaces " " with underscores "_".
+    # those 4 facts are put on the vars_to_fluent_map in the beginning and then are used in the action's creation.
     grounded_problem = up.model.Problem(task.name, original_problem.env)
     rewrite_back_map: Dict['up.model.Action', Tuple['up.model.Action', List['up.model.FNode']]] = {}
     #map from names in the task domain to fluents of the grounded problem
-    vars_to_fluent_map: Dict[str, 'up.model.Fluent'] = {}
+    vars_to_fluent_map: Dict[str, 'up.model.FNode'] = {}
+    for f in original_problem.fluents:
+        grounded_problem.add_fluent(f, default_initial_value=False)
+    grounded_problem.add_objects(original_problem.all_objects)
     for fact in task.facts:
-        fluent = up.model.Fluent(_get_fresh_name(grounded_problem, _change_notation(fact)))
-        vars_to_fluent_map[fact] = fluent
-        grounded_problem.add_fluent(fluent, default_initial_value=False)
+        fluent_name, object_names = _get_original_action_and_parameters_name(fact)
+        objects = [original_problem.object(n) for n in object_names]
+        fluent = original_problem.fluent(fluent_name)
+        vars_to_fluent_map[fact] = fluent(*objects)
     for init in task.initial_state:
         grounded_problem.set_initial_value(vars_to_fluent_map[init], True)
     for goal in task.goals:

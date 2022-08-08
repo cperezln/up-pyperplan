@@ -75,6 +75,13 @@ class EngineImpl(
         return compilation_kind == CompilationKind.GROUNDING
 
     @staticmethod
+    def resulting_problem_kind(
+        problem_kind: ProblemKind,
+        compilation_kind: Optional[CompilationKind] = None,
+    ) -> ProblemKind:
+        return ProblemKind(problem_kind.features)
+
+    @staticmethod
     def satisfies(optimality_guarantee: up.engines.OptimalityGuarantee) -> bool:
         return False
 

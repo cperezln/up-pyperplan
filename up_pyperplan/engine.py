@@ -64,6 +64,7 @@ class EngineImpl(
         supported_kind.set_problem_class('ACTION_BASED') # type: ignore
         supported_kind.set_typing('FLAT_TYPING') # type: ignore
         supported_kind.set_typing('HIERARCHICAL_TYPING') # type: ignore
+        supported_kind.set_quality_metrics("PLAN_LENGTH") # type: ignore
         return supported_kind
 
     @staticmethod
@@ -83,7 +84,7 @@ class EngineImpl(
 
     @staticmethod
     def satisfies(optimality_guarantee: up.engines.OptimalityGuarantee) -> bool:
-        return False
+        return True
 
     @staticmethod
     def get_credits(**kwargs) -> Optional[unified_planning.engines.Credits]:
@@ -101,12 +102,15 @@ class EngineImpl(
 
     def _solve(self, problem: 'up.model.AbstractProblem',
                callback: Optional[Callable[['up.engines.PlanGenerationResult'], None]] = None,
+               heuristic: Optional[Callable[["up.model.state.ROState"], Optional[float]]] = None,
                timeout: Optional[float] = None,
                output_stream: Optional[IO[str]] = None) -> 'up.engines.results.PlanGenerationResult':
         '''This function returns the PlanGenerationResult for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
         assert isinstance(problem, up.model.Problem)
+        if heuristic is not None:
+            warnings.warn('Pyperplan does not support custom heuristic.', UserWarning)
         if timeout is not None:
             warnings.warn('Pyperplan does not support timeout.', UserWarning)
         if output_stream is not None:
@@ -114,18 +118,16 @@ class EngineImpl(
         self.pyp_types = {}
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)
-        search = SEARCHES["bfs"]
+        search = SEARCHES["astar"]
         task = _ground(prob)
-        heuristic = None
-        # if not heuristic_class is None:
-        #     heuristic = heuristic_class(task)
-        solution = _search(task, search, heuristic)
+        h = HEURISTICS["lmcut"](task)
+        solution = _search(task, search, h)
         actions: List[up.plans.ActionInstance] = []
         if solution is None:
             return up.engines.PlanGenerationResult(PlanGenerationResultStatus.UNSOLVABLE_PROVEN, None, self.name)
         for action_string in solution:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
-        return up.engines.PlanGenerationResult(PlanGenerationResultStatus.SOLVED_SATISFICING, up.plans.SequentialPlan(actions), self.name)
+        return up.engines.PlanGenerationResult(PlanGenerationResultStatus.SOLVED_OPTIMALLY, up.plans.SequentialPlan(actions), self.name)
 
     def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plans.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"

@@ -51,8 +51,16 @@ class EngineImpl(
     """ Implementation of the up-pyperplan Engine. """
 
 
-    def __init__(self):
+    def __init__(self, search: str = "wastar", heuristic: Optional[str] = "hadd"):
         unified_planning.engines.Engine.__init__(self)
+        if search not in SEARCHES:
+            raise up.exceptions.UPUsageError(f'{search} not supported!')
+        if heuristic not in HEURISTICS:
+            raise up.exceptions.UPUsageError(f'{heuristic} not supported!')
+        self._search = SEARCHES[search]
+        self._heuristic = HEURISTICS[heuristic]
+        if search in ["bfs", "ids", "sat"]:
+            self._heuristic = None
 
     @property
     def name(self) -> str:
@@ -84,7 +92,7 @@ class EngineImpl(
 
     @staticmethod
     def satisfies(optimality_guarantee: up.engines.OptimalityGuarantee) -> bool:
-        return True
+        return optimality_guarantee == up.engines.OptimalityGuarantee.SATISFICING
 
     @staticmethod
     def get_credits(**kwargs) -> Optional[unified_planning.engines.Credits]:
@@ -118,10 +126,9 @@ class EngineImpl(
         self.pyp_types = {}
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)
-        search = SEARCHES["astar"]
         task = _ground(prob)
-        h = HEURISTICS["lmcut"](task)
-        solution = _search(task, search, h)
+        h = None if self._heuristic is None else self._heuristic(task)
+        solution = _search(task, self._search, h)
         actions: List[up.plans.ActionInstance] = []
         if solution is None:
             return up.engines.PlanGenerationResult(PlanGenerationResultStatus.UNSOLVABLE_PROVEN, None, self.name)
@@ -251,3 +258,20 @@ class EngineImpl(
         new_t = PyperplanType(type.name, father)
         self.pyp_types[type.name] = new_t
         return new_t
+
+
+class OptEngineImpl(EngineImpl):
+    def __init__(self, search: str = "astar", heuristic: Optional[str] = "lmcut"):
+        if search not in ["astar", "bfs", "ids"]:
+            raise up.exceptions.UPUsageError(f'{search} not supported!')
+        if heuristic not in ["hmax", "blind", "lmcut"]:
+            raise up.exceptions.UPUsageError(f'{heuristic} not supported!')
+        EngineImpl.__init__(self, search, heuristic)
+
+    @property
+    def name(self) -> str:
+        return "PyperplanOpt"
+
+    @staticmethod
+    def satisfies(optimality_guarantee: up.engines.OptimalityGuarantee) -> bool:
+        return True

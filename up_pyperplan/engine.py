@@ -61,6 +61,11 @@ class EngineImpl(
         self._heuristic = HEURISTICS[heuristic]
         if search in ["bfs", "ids", "sat"]:
             self._heuristic = None
+            self._optimal = True
+        elif search == "astar" and heuristic in ["hmax", "blind", "lmcut"]:
+            self._optimal = True
+        else:
+            self._optimal = False
 
     @property
     def name(self) -> str:
@@ -131,10 +136,18 @@ class EngineImpl(
         solution = _search(task, self._search, h)
         actions: List[up.plans.ActionInstance] = []
         if solution is None:
-            return up.engines.PlanGenerationResult(PlanGenerationResultStatus.UNSOLVABLE_PROVEN, None, self.name)
+            if self._search in ["bfs", "ids", "astar", "wastar", "gbf"]:
+                status = PlanGenerationResultStatus.UNSOLVABLE_PROVEN
+            else:
+                status = PlanGenerationResultStatus.UNSOLVABLE_INCOMPLETELY
+            return up.engines.PlanGenerationResult(status, None, self.name)
         for action_string in solution:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
-        return up.engines.PlanGenerationResult(PlanGenerationResultStatus.SOLVED_OPTIMALLY, up.plans.SequentialPlan(actions), self.name)
+        if self._optimal:
+            status = PlanGenerationResultStatus.SOLVED_OPTIMALLY
+        else:
+            status = PlanGenerationResultStatus.SOLVED_SATISFICING
+        return up.engines.PlanGenerationResult(status, up.plans.SequentialPlan(actions), self.name)
 
     def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plans.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"

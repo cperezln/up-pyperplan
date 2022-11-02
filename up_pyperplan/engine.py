@@ -143,7 +143,7 @@ class EngineImpl(
             return up.engines.PlanGenerationResult(status, None, self.name)
         for action_string in solution:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
-        if self._optimal:
+        if self._optimal and len(problem.quality_metrics) > 0:
             status = PlanGenerationResultStatus.SOLVED_OPTIMALLY
         else:
             status = PlanGenerationResultStatus.SOLVED_SATISFICING

@@ -51,8 +51,21 @@ class EngineImpl(
     """ Implementation of the up-pyperplan Engine. """
 
 
-    def __init__(self):
+    def __init__(self, search: str = "wastar", heuristic: Optional[str] = "hadd"):
         unified_planning.engines.Engine.__init__(self)
+        if search not in SEARCHES:
+            raise up.exceptions.UPUsageError(f'{search} not supported!')
+        if heuristic not in HEURISTICS:
+            raise up.exceptions.UPUsageError(f'{heuristic} not supported!')
+        self._search = SEARCHES[search]
+        self._heuristic = HEURISTICS[heuristic]
+        if search in ["bfs", "ids", "sat"]:
+            self._heuristic = None
+            self._optimal = True
+        elif search == "astar" and heuristic in ["hmax", "blind", "lmcut"]:
+            self._optimal = True
+        else:
+            self._optimal = False
 
     @property
     def name(self) -> str:
@@ -64,6 +77,7 @@ class EngineImpl(
         supported_kind.set_problem_class('ACTION_BASED') # type: ignore
         supported_kind.set_typing('FLAT_TYPING') # type: ignore
         supported_kind.set_typing('HIERARCHICAL_TYPING') # type: ignore
+        supported_kind.set_quality_metrics("PLAN_LENGTH") # type: ignore
         return supported_kind
 
     @staticmethod
@@ -83,7 +97,7 @@ class EngineImpl(
 
     @staticmethod
     def satisfies(optimality_guarantee: up.engines.OptimalityGuarantee) -> bool:
-        return False
+        return optimality_guarantee == up.engines.OptimalityGuarantee.SATISFICING
 
     @staticmethod
     def get_credits(**kwargs) -> Optional[unified_planning.engines.Credits]:
@@ -101,12 +115,15 @@ class EngineImpl(
 
     def _solve(self, problem: 'up.model.AbstractProblem',
                callback: Optional[Callable[['up.engines.PlanGenerationResult'], None]] = None,
+               heuristic: Optional[Callable[["up.model.state.ROState"], Optional[float]]] = None,
                timeout: Optional[float] = None,
                output_stream: Optional[IO[str]] = None) -> 'up.engines.results.PlanGenerationResult':
         '''This function returns the PlanGenerationResult for the problem given in input.
         The planner used to retrieve the plan is "pyperplan" therefore only flat_typing
         is supported.'''
         assert isinstance(problem, up.model.Problem)
+        if heuristic is not None:
+            warnings.warn('Pyperplan does not support custom heuristic.', UserWarning)
         if timeout is not None:
             warnings.warn('Pyperplan does not support timeout.', UserWarning)
         if output_stream is not None:
@@ -114,18 +131,23 @@ class EngineImpl(
         self.pyp_types = {}
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)
-        search = SEARCHES["bfs"]
         task = _ground(prob)
-        heuristic = None
-        # if not heuristic_class is None:
-        #     heuristic = heuristic_class(task)
-        solution = _search(task, search, heuristic)
+        h = None if self._heuristic is None else self._heuristic(task)
+        solution = _search(task, self._search, h)
         actions: List[up.plans.ActionInstance] = []
         if solution is None:
-            return up.engines.PlanGenerationResult(PlanGenerationResultStatus.UNSOLVABLE_PROVEN, None, self.name)
+            if self._search in ["bfs", "ids", "astar", "wastar", "gbf"]:
+                status = PlanGenerationResultStatus.UNSOLVABLE_PROVEN
+            else:
+                status = PlanGenerationResultStatus.UNSOLVABLE_INCOMPLETELY
+            return up.engines.PlanGenerationResult(status, None, self.name)
         for action_string in solution:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
-        return up.engines.PlanGenerationResult(PlanGenerationResultStatus.SOLVED_SATISFICING, up.plans.SequentialPlan(actions), self.name)
+        if self._optimal and len(problem.quality_metrics) > 0:
+            status = PlanGenerationResultStatus.SOLVED_OPTIMALLY
+        else:
+            status = PlanGenerationResultStatus.SOLVED_SATISFICING
+        return up.engines.PlanGenerationResult(status, up.plans.SequentialPlan(actions), self.name)
 
     def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plans.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"
@@ -249,3 +271,20 @@ class EngineImpl(
         new_t = PyperplanType(type.name, father)
         self.pyp_types[type.name] = new_t
         return new_t
+
+
+class OptEngineImpl(EngineImpl):
+    def __init__(self, search: str = "astar", heuristic: Optional[str] = "lmcut"):
+        if search not in ["astar", "bfs", "ids"]:
+            raise up.exceptions.UPUsageError(f'{search} not supported!')
+        if heuristic not in ["hmax", "blind", "lmcut"]:
+            raise up.exceptions.UPUsageError(f'{heuristic} not supported!')
+        EngineImpl.__init__(self, search, heuristic)
+
+    @property
+    def name(self) -> str:
+        return "PyperplanOpt"
+
+    @staticmethod
+    def satisfies(optimality_guarantee: up.engines.OptimalityGuarantee) -> bool:
+        return True

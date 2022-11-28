@@ -53,6 +53,8 @@ class EngineImpl(
 
     def __init__(self, search: str = "wastar", heuristic: Optional[str] = "hadd"):
         unified_planning.engines.Engine.__init__(self)
+        up.engines.mixins.OneshotPlannerMixin.__init__(self)
+        up.engines.mixins.CompilerMixin.__init__(self)
         if search not in SEARCHES:
             raise up.exceptions.UPUsageError(f'{search} not supported!')
         if heuristic not in HEURISTICS:

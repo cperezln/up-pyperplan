@@ -116,7 +116,6 @@ class EngineImpl(
         return CompilerResult(grounded_problem, partial(up.engines.compilers.utils.lift_action_instance, map=rewrite_back_map), self.name, [])
 
     def _solve(self, problem: 'up.model.AbstractProblem',
-               callback: Optional[Callable[['up.engines.PlanGenerationResult'], None]] = None,
                heuristic: Optional[Callable[["up.model.state.ROState"], Optional[float]]] = None,
                timeout: Optional[float] = None,
                output_stream: Optional[IO[str]] = None) -> 'up.engines.results.PlanGenerationResult':

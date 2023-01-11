@@ -154,7 +154,7 @@ class EngineImpl(
         assert string[0] == "(" and string[-1] == ")"
         list_str = string[1:-1].split(" ")
         action = problem.action(list_str[0])
-        expr_manager = problem.env.expression_manager
+        expr_manager = problem.environment.expression_manager
         param = tuple(expr_manager.ObjectExp(problem.object(o_name)) for o_name in list_str[1:])
         return up.plans.ActionInstance(action, param)
 
@@ -206,10 +206,10 @@ class EngineImpl(
             for param in f.signature:
                 pred_sign.append((param.name, (self._convert_type(param.type), )))
             predicates[f.name] = Predicate(f.name, pred_sign)
-        actions: Dict[str, PyperplanAction] = {a.name: self._convert_action(a, problem.env) for a in problem.actions}
+        actions: Dict[str, PyperplanAction] = {a.name: self._convert_action(a, problem.environment) for a in problem.actions}
         return Domain(f'domain_{problem.name}', pyperplan_types, predicates,  actions)
 
-    def _convert_action(self, action: 'up.model.Action', env) -> PyperplanAction:
+    def _convert_action(self, action: 'up.model.Action', environment) -> PyperplanAction:
         #action_signature
         assert isinstance(action, up.model.InstantaneousAction)
         act_sign: List[Tuple[str, Tuple[PyperplanType, ...]]] = [(p.name,

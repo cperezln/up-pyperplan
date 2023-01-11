@@ -44,7 +44,7 @@ def rewrite_back_task(task: 'pyperplan.task.Task', original_problem: 'up.model.P
     #facts are all the fluents applied to all the objects, in lisp notation, therefore a fluent "at" that takes a robot
     # and a location, with r1, r2, l1, l2 is represented as 4 facts called "(at r1 l1) (at r1 l2) (at r2 l1) (at r2 l2)"
     # those 4 facts are put on the vars_to_fluent_map in the beginning and then are used in the action's creation.
-    grounded_problem = up.model.Problem(task.name, original_problem.env)
+    grounded_problem = up.model.Problem(task.name, original_problem.environment)
     rewrite_back_map: Dict['up.model.Action', Tuple['up.model.Action', List['up.model.FNode']]] = {}
     #map from names in the task domain to fluents of the grounded problem
     vars_to_fluent_map: Dict[str, 'up.model.FNode'] = {}
@@ -73,5 +73,5 @@ def rewrite_back_task(task: 'pyperplan.task.Task', original_problem: 'up.model.P
         parameters: List['up.model.Object'] = []
         for parameter_name in parameters_names:
             parameters.append(original_problem.object(parameter_name))
-        rewrite_back_map[new_action] = (original_problem.action(original_action_name), original_problem.env.expression_manager.auto_promote(parameters))
+        rewrite_back_map[new_action] = (original_problem.action(original_action_name), original_problem.environment.expression_manager.auto_promote(parameters))
     return (grounded_problem, rewrite_back_map)

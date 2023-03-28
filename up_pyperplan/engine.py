@@ -35,8 +35,8 @@ from pyperplan.pddl.pddl import Predicate, Effect, Domain # type: ignore
 from pyperplan.planner import _ground, _search, SEARCHES, HEURISTICS # type: ignore
 
 credits = Credits('pyperplan',
-                  'Artificial Intelligence Group - University of Basel',
-                  'Yusra Alkhazraji and Matthias Frorath and Markus Grützner and Malte Helmert and Thomas Liebetraut and Robert Mattmüller and Manuela Ortlieb and Jendrik Seipp and Tobias Springenberg and Philip Stahl and Jan Wülfing',
+                  'Albert-Ludwigs-Universität Freiburg (Yusra Alkhazraji, Matthias Frorath, Markus Grützner, Malte Helmert, Thomas Liebetraut, Robert Mattmüller, Manuela Ortlieb, Jendrik Seipp, Tobias Springenberg, Philip Stahl, Jan Wülfing)',
+                  'Jendrik Seipp, Malte Helmert (Pyperplan is now maintained by the AI group at the University of Basel)',
                   'https://github.com/aibasel/pyperplan',
                   'GNU GENERAL PUBLIC LICENSE, Version 3',
                   'Pyperplan is a lightweight STRIPS planner written in Python.',

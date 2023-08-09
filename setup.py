@@ -21,6 +21,6 @@ setup(name='up_pyperplan',
       url='https://www.aiplan4eu-project.eu',
       packages=['up_pyperplan'],
       python_requires='>=3.7',
-      install_requires=['pyperplan==2.1'],
+      install_requires=['pyperplan==2.1', 'ConfigSpace'],
       license='APACHE'
      )

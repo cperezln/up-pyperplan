@@ -14,6 +14,7 @@
 
 
 from functools import partial
+from ConfigSpace import ConfigurationSpace
 from typing import IO, Callable, List, Dict, Optional, Set, Tuple, Union, cast
 import warnings
 import unified_planning as up
@@ -104,6 +105,11 @@ class EngineImpl(
     @staticmethod
     def get_credits(**kwargs) -> Optional[unified_planning.engines.Credits]:
         return credits
+
+    @staticmethod
+    def get_configuration_space() -> ConfigurationSpace:
+        return ConfigurationSpace(space={"search": ["wastar", "astar", "gbf", "bfs", "ehs", "ids", "sat"],
+                                         "heuristic": ["hadd", "hmax", "hsa", "hff", "blind", "lmcut", "landmark"]})
 
     def _compile(self, problem: 'up.model.AbstractProblem',
                  compilation_kind: 'up.engines.CompilationKind') -> CompilerResult:
@@ -289,3 +295,8 @@ class OptEngineImpl(EngineImpl):
     @staticmethod
     def satisfies(optimality_guarantee: up.engines.OptimalityGuarantee) -> bool:
         return True
+
+    @staticmethod
+    def get_configuration_space() -> ConfigurationSpace:
+        return ConfigurationSpace(space={"search": ["astar", "bfs", "ids"],
+                                         "heuristic": ["hmax", "blind", "lmcut"]})

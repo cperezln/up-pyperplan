@@ -96,7 +96,7 @@ class EngineImpl(
         problem_kind: ProblemKind,
         compilation_kind: Optional[CompilationKind] = None,
     ) -> ProblemKind:
-        return ProblemKind(problem_kind.features, problem_kind.get_version())
+        return problem_kind.clone()
 
     @staticmethod
     def satisfies(optimality_guarantee: up.engines.OptimalityGuarantee) -> bool:

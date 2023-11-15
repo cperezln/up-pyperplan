@@ -16,6 +16,7 @@
 from functools import partial
 from ConfigSpace import ConfigurationSpace
 from typing import IO, Callable, List, Dict, Optional, Set, Tuple, Union, cast
+import time
 import warnings
 import unified_planning as up
 import unified_planning.engines
@@ -138,23 +139,26 @@ class EngineImpl(
         self.pyp_types = {}
         dom = self._convert_domain(problem)
         prob = self._convert_problem(dom, problem)
+        start = time.time()
         task = _ground(prob)
         h = None if self._heuristic is None else self._heuristic(task)
         solution = _search(task, self._search, h)
+        solving_time = time.time() - start
         actions: List[up.plans.ActionInstance] = []
         if solution is None:
             if self._search in ["bfs", "ids", "astar", "wastar", "gbf"]:
                 status = PlanGenerationResultStatus.UNSOLVABLE_PROVEN
             else:
                 status = PlanGenerationResultStatus.UNSOLVABLE_INCOMPLETELY
-            return up.engines.PlanGenerationResult(status, None, self.name)
+            return up.engines.PlanGenerationResult(status, None, self.name, metrics={"engine_internal_time": str(solving_time)})
         for action_string in solution:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
         if self._optimal and len(problem.quality_metrics) > 0:
             status = PlanGenerationResultStatus.SOLVED_OPTIMALLY
         else:
             status = PlanGenerationResultStatus.SOLVED_SATISFICING
-        return up.engines.PlanGenerationResult(status, up.plans.SequentialPlan(actions), self.name)
+        return up.engines.PlanGenerationResult(status, up.plans.SequentialPlan(actions),
+                                               self.name, metrics={"engine_internal_time": str(solving_time)})
 
     def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plans.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"

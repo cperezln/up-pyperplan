@@ -35,7 +35,7 @@ from pyperplan.pddl.pddl import Predicate, Effect, Domain # type: ignore
 
 
 from pyperplan.planner import _ground, _search, SEARCHES, HEURISTICS # type: ignore
-
+# TODO CAMBIOS AQUÍ
 credits = Credits('pyperplan',
                   'Albert-Ludwigs-Universität Freiburg (Yusra Alkhazraji, Matthias Frorath, Markus Grützner, Malte Helmert, Thomas Liebetraut, Robert Mattmüller, Manuela Ortlieb, Jendrik Seipp, Tobias Springenberg, Philip Stahl, Jan Wülfing)',
                   'Jendrik Seipp, Malte Helmert (Pyperplan is now maintained by the AI group at the University of Basel)',
@@ -53,7 +53,8 @@ class EngineImpl(
     """ Implementation of the up-pyperplan Engine. """
 
 
-    def __init__(self, search: str = "wastar", heuristic: Optional[str] = "hadd"):
+    def __init__(self, search: str = "wastar", heuristic: Optional[str] = "hadd", lgg: Optional[dict] = {}, translations: Optional[dict] = {},
+                 probabilities: Optional[dict] = {}, restrictions: Optional[dict] = {}, types: Optional[dict] = {}):
         unified_planning.engines.Engine.__init__(self)
         up.engines.mixins.OneshotPlannerMixin.__init__(self)
         up.engines.mixins.CompilerMixin.__init__(self)
@@ -63,6 +64,11 @@ class EngineImpl(
             raise up.exceptions.UPUsageError(f'{heuristic} not supported!')
         self._search = SEARCHES[search]
         self._heuristic = HEURISTICS[heuristic]
+        self._lgg = lgg
+        self._translations = translations
+        self._probabilities = probabilities
+        self._restrictions = restrictions
+        self._types = types
         if search in ["bfs", "ids", "sat"]:
             self._heuristic = None
             self._optimal = True
@@ -141,7 +147,14 @@ class EngineImpl(
         prob = self._convert_problem(dom, problem)
         start = time.time()
         task = _ground(prob)
-        h = None if self._heuristic is None else self._heuristic(task)
+        if self._heuristic is None:
+            h = None
+        elif self._lgg == {}:
+            h = self._heuristic(task)
+        elif self._probabilities == {}:
+            h = self._heuristic(task, self._lgg, self._translations)
+        else:
+            h = self._heuristic(task, self._lgg, self._probabilities, self._restrictions, self._types)
         solution = _search(task, self._search, h)
         solving_time = time.time() - start
         actions: List[up.plans.ActionInstance] = []

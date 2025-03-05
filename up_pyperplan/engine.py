@@ -54,7 +54,8 @@ class EngineImpl(
 
 
     def __init__(self, search: str = "wastar", heuristic: Optional[str] = "hadd", lgg: Optional[dict] = {}, translations: Optional[dict] = {},
-                 probabilities: Optional[dict] = {}, restrictions: Optional[dict] = {}, types: Optional[dict] = {}):
+                 probabilities: Optional[dict] = {}, restrictions: Optional[dict] = {}, types: Optional[dict] = {},
+                 plog_backw: Optional[dict] = {}):
         unified_planning.engines.Engine.__init__(self)
         up.engines.mixins.OneshotPlannerMixin.__init__(self)
         up.engines.mixins.CompilerMixin.__init__(self)
@@ -68,6 +69,7 @@ class EngineImpl(
         self._translations = translations
         self._probabilities = probabilities
         self._restrictions = restrictions
+        self._plog_backw = plog_backw
         self._types = types
         if search in ["bfs", "ids", "sat"]:
             self._heuristic = None
@@ -151,27 +153,32 @@ class EngineImpl(
             h = None
         elif self._lgg == {}:
             h = self._heuristic(task)
-        elif self._probabilities == {}:
+        elif self._probabilities == {} and self._plog_backw == {}:
             h = self._heuristic(task, self._lgg, self._translations)
-        else:
+        elif self._plog_backw == {}:
             h = self._heuristic(task, self._lgg, self._probabilities, self._restrictions, self._types)
+        else:
+             h = self._heuristic(task, self._lgg, self._plog_backw, self._types)
         solution = _search(task, self._search, h)
         solving_time = time.time() - start
         actions: List[up.plans.ActionInstance] = []
+        fluents = []
         if solution is None:
             if self._search in ["bfs", "ids", "astar", "wastar", "gbf"]:
                 status = PlanGenerationResultStatus.UNSOLVABLE_PROVEN
             else:
                 status = PlanGenerationResultStatus.UNSOLVABLE_INCOMPLETELY
             return up.engines.PlanGenerationResult(status, None, self.name, metrics={"engine_internal_time": str(solving_time)})
-        for action_string in solution:
+        for action_string in solution[0]:
             actions.append(self._convert_string_to_action_instance(action_string.name, problem))
+        for fluent_string in solution[1]:
+            fluents.append(fluent_string)
         if self._optimal and len(problem.quality_metrics) > 0:
             status = PlanGenerationResultStatus.SOLVED_OPTIMALLY
         else:
             status = PlanGenerationResultStatus.SOLVED_SATISFICING
-        return up.engines.PlanGenerationResult(status, up.plans.SequentialPlan(actions),
-                                               self.name, metrics={"engine_internal_time": str(solving_time)})
+        return [up.engines.PlanGenerationResult(status, up.plans.SequentialPlan(actions),
+                                               self.name, metrics={"engine_internal_time": str(solving_time)}), fluents]
 
     def _convert_string_to_action_instance(self, string: str, problem: 'up.model.Problem') -> 'up.plans.ActionInstance':
         assert string[0] == "(" and string[-1] == ")"
